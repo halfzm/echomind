@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full bg-[#f5f5f1] text-stone-900">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵犀 | EchoMind</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Decision Lab & Sentiment Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fcfbf9',
+                            100: '#f4f3ee',
+                            500: '#1f1f1f',
+                            600: '#111111',
+                            700: '#000000',
+                        },
+                        accent: {
+                            rose: '#e11d48',
+                            amber: '#d97706',
+                            emerald: '#059669',
+                            sky: '#0284c7',
+                            purple: '#7c3aed'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'PingFang SC', 'Noto Sans SC', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar & light warm panel styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(245, 245, 241, 0.8);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(163, 163, 163, 0.4);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(115, 115, 115, 0.6);
+        }
+
+        .light-card {
+            background: #ffffff;
+            border: 1px solid rgba(229, 229, 224, 0.8);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.015);
+        }
+
+        .light-card-interactive {
+            background: #ffffff;
+            border: 1px solid rgba(229, 229, 224, 0.9);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .light-card-interactive:hover {
+            border-color: rgba(31, 31, 31, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Drag & Drop Overlay Zone */
+        .drag-zone {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .drag-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(245, 245, 241, 0.88);
+            border: 2px dashed #1f1f1f;
+            border-radius: 1rem;
+            z-index: 40;
+            pointer-events: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            color: #1f1f1f;
+            font-size: 13px;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+        }
+
+        .drag-zone.dragging .drag-overlay {
+            display: flex;
+        }
+
+        /* Record Button Animations */
+        @keyframes record-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 8px rgba(225, 29, 72, 0);
+            }
+        }
+
+        .btn-record-active {
+            animation: record-pulse 1.2s infinite;
+        }
+
+        /* Custom Tooltip */
+        [data-tooltip] {
+            position: relative;
+            cursor: pointer;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f1f1f;
+            color: #f5f5f1;
+            padding: 5px 9px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-tooltip]:hover::after {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="h-full flex flex-col font-sans overflow-hidden antialiased selection:bg-neutral-900 selection:text-white">
+
+    <!-- Top Fixed Header -->
+    <header
+        class="h-16 border-b border-stone-200/80 bg-white/90 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0">
+        <!-- Logo -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('personas')">
+            <div class="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center text-white shadow-sm">
+                <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base leading-none text-stone-900 tracking-tight">灵犀</h1>
+                <span class="text-[10px] text-stone-400 font-medium tracking-wider uppercase">EchoMind</span>
+            </div>
+        </div>
+
+        <!-- Search & Global Target Selector -->
+        <div class="flex items-center space-x-4 max-w-md w-full mx-4">
+            <div class="relative w-full">
+                <!-- <span class="text font-bold text-stone-900 items-center justify-center">做一个随身、懂你、有记忆的AI关系副驾</span> -->
+
+                <i
+                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs"></i>
+
+                <input type="text" id="globalSearchInput" onkeyup="handleGlobalSearch(this.value)"
+                    placeholder="搜索关系人、聊天截图、语音及分析报告..."
+                    class="w-full pl-9 pr-4 py-1.5 bg-stone-100/80 border border-stone-200 rounded-full text-xs text-stone-800 placeholder-stone-400 focus:bg-white focus:outline-none focus:border-neutral-800 transition-all">
+            </div>
+        </div>
+
+        <!-- Right Quick Actions -->
+        <div class="flex items-center space-x-3">
+            <!-- Active Target Selector Widget -->
+            <div
+                class="hidden sm:flex items-center space-x-2 bg-stone-100/80 border border-stone-200/80 px-3 py-1 rounded-full">
+                <span class="text-xs text-stone-500">当前对象:</span>
+                <select id="headerPersonaSelect" onchange="changeActivePersona(this.value)"
+                    class="bg-transparent text-xs font-semibold text-stone-900 focus:outline-none cursor-pointer">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Modified Button: 个人档案 -->
+            <button onclick="openUserProfileModal()"
+                class="flex items-center space-x-1.5 px-3.5 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-medium shadow-sm transition-all active:scale-95">
+                <i class="fa-solid fa-user-gear text-[11px]"></i>
+                <span>个人档案</span>
+            </button>
+
+            <div class="relative group inline-block">
+                <button onclick="exportStudioData()"
+                    class="w-8 h-8 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition-colors shadow-sm">
+                    <i class="fa-solid fa-download text-xs"></i>
+                </button>
+
+                <div
+                    class="absolute z-50 top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 invisible transition-all duration-150 pointer-events-none group-hover:opacity-100 group-hover:visible">
+                    <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-stone-800 rotate-45"></div>
+                    <div class="bg-stone-800 text-white text-xs px-2 py-1.5 rounded shadow-md whitespace-nowrap">
+                        导出关系档案
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Sidebar Navigation -->
+        <aside
+            class="w-20 lg:w-60 border-r border-stone-200/80 bg-[#fbfbfa]/80 flex flex-col justify-between py-4 shrink-0">
+            <nav class="space-y-1.5 px-3">
+                <button onclick="switchTab('personas')" id="tab-btn-personas"
+                    class="tab-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all font-medium text-xs text-white bg-neutral-900 shadow-sm">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-white/10 shrink-0">
+                        <i class="fa-solid fa-address-book text-xs"></i>
+                    </div>
+                    <span class="hidden lg:inline font-semibold">我的关系人</span>
+                </button>
+
+                <button onclick="switchTab('simulator')" id="tab-btn-simulator"
+                    class="tab-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all font-medium text-xs text-stone-600 hover:bg-stone-200/50 hover:text-stone-900">
+                    <div
+                        class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
+                        <i class="fa-solid fa-comments text-xs"></i>
+                    </div>
+                    <span class="hidden lg:inline font-semibold">模拟舱</span>
+                </button>
+
+                <button onclick="switchTab('decision')" id="tab-btn-decision"
+                    class="tab-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all font-medium text-xs text-stone-600 hover:bg-stone-200/50 hover:text-stone-900">
+                    <div
+                        class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
+                        <i class="fa-solid fa-chart-radar text-xs"></i>
+                    </div>
+                    <span class="hidden lg:inline font-semibold">决策台 (多模态)</span>
+                </button>
+
+                <button onclick="switchTab('timeline')" id="tab-btn-timeline"
+                    class="tab-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all font-medium text-xs text-stone-600 hover:bg-stone-200/50 hover:text-stone-900">
+                    <div
+                        class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
+                        <i class="fa-solid fa-timeline text-xs"></i>
+                    </div>
+                    <span class="hidden lg:inline font-semibold">时光轴</span>
+                </button>
+            </nav>
+
+            <!-- Bottom Target Info Switcher Badge -->
+            <div class="px-3">
+                <div class="light-card p-3 rounded-2xl flex items-center space-x-3 border border-stone-200">
+                    <img id="sidebarAvatar"
+                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
+                        class="w-9 h-9 rounded-full object-cover ring-2 ring-stone-200 shrink-0">
+                    <div class="hidden lg:block overflow-hidden">
+                        <p id="sidebarName" class="text-xs font-bold text-stone-900 truncate">林小A</p>
+                        <p id="sidebarStatus" class="text-[10px] text-amber-600 font-semibold">✨ 暧昧期 | ENFP</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content Container -->
+        <main class="flex-1 overflow-y-auto bg-[#f5f5f1] p-6 relative">
+
+            <!-- SECTION 1: 【我的关系人】 -->
+            <section id="view-personas" class="tab-view space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+                            <span>我的关系人</span>
+                            <span class="text-xs bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full font-medium"
+                                id="personaCountBadge">3 位关系对象</span>
+                        </h2>
+                        <p class="text-xs text-stone-500 mt-1">管理AI人格对象库，可直接导入微信/QQ聊天记录、通话语音及截图构建人物档案。</p>
+                    </div>
+                    <button onclick="openCreatePersonaModal()"
+                        class="self-start md:self-auto flex items-center space-x-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold rounded-xl transition shadow-sm">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>添加关系人</span>
+                    </button>
+                </div>
+
+                <!-- Personas Grid List -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="personasGrid">
+                    <!-- Dynamic rendering by JS -->
+                </div>
+
+                <!-- Active Persona Dossier Deep Dive -->
+                <div class="light-card p-6 rounded-2xl space-y-5 border border-stone-200" id="personaDetailPanel">
+                    <!-- Rendered dynamically -->
+                </div>
+            </section>
+
+            <!-- SECTION 2: 【模拟舱】 -->
+            <section id="view-simulator" class="tab-view hidden h-full flex flex-col space-y-4">
+                <div
+                    class="flex flex-wrap items-center justify-between gap-3 bg-white/90 border border-stone-200 p-3 rounded-2xl shrink-0 shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200/60 text-xs">
+                            <button id="simTypeFree" onclick="setSimType('free')"
+                                class="px-3.5 py-1.5 rounded-lg font-semibold transition bg-neutral-900 text-white shadow-sm">自由对话</button>
+                            <button id="simTypeScenario" onclick="setSimType('scenario')"
+                                class="px-3.5 py-1.5 rounded-lg font-medium text-stone-600 hover:text-stone-900 transition">场景剧本</button>
+                        </div>
+                        <div id="scenarioSelectorContainer" class="hidden">
+                            <select id="scenarioSelect" onchange="loadScenario(this.value)"
+                                class="bg-stone-50 border border-stone-200 text-xs text-stone-800 px-3 py-1.5 rounded-xl focus:outline-none focus:border-neutral-800">
+                                <option value="icebreak">🌱 首次破冰：开启有趣话题</option>
+                                <option value="invite">🍷 周末邀约：高情商约看电影</option>
+                                <option value="conflict">❄️ 化解冷战：打破死寂僵局</option>
+                                <option value="confess">💌 浪漫表白：试探真心与摊牌</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex items-center space-x-3 bg-stone-100/80 px-3 py-1.5 rounded-xl border border-stone-200/60 text-xs">
+                        <span class="text-stone-500 font-medium">模式选择:</span>
+                        <button id="modeSparring" onclick="setSimMode('sparring')"
+                            class="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white text-stone-900 shadow-sm font-semibold border border-stone-200">
+                            <i class="fa-solid fa-gamepad text-xs"></i>
+                            <span>陪练模式 (AI扮演对方)</span>
+                        </button>
+                        <button id="modeAdvisor" onclick="setSimMode('advisor')"
+                            class="flex items-center space-x-1.5 px-3 py-1 rounded-lg text-stone-500 hover:text-stone-900">
+                            <i class="fa-solid fa-brain text-xs"></i>
+                            <span>军师模式 (AI侧边诊断)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Simulator Chat Layout -->
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+                    <div class="lg:col-span-2 light-card rounded-2xl flex flex-col overflow-hidden border border-stone-200 relative drag-zone"
+                        id="simDragZone">
+                        <div class="drag-overlay">
+                            <i class="fa-solid fa-cloud-arrow-up text-3xl mb-1"></i>
+                            <span>释放文件以发送给模拟助手</span>
+                        </div>
+
+                        <div class="p-3.5 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <img id="simAvatar" src=""
+                                    class="w-8 h-8 rounded-full object-cover ring-2 ring-stone-200">
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <h3 id="simName" class="text-xs font-bold text-stone-900"></h3>
+                                        <span id="simTag"
+                                            class="text-[10px] px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 font-medium"></span>
+                                    </div>
+                                    <p id="simSubtext" class="text-[10px] text-stone-400">支持图文、语音听觉及附件演练...</p>
+                                </div>
+                            </div>
+                            <button onclick="resetSimChat()"
+                                class="text-xs text-stone-600 hover:text-stone-900 px-2.5 py-1 bg-white rounded-lg border border-stone-200 shadow-sm transition">
+                                <i class="fa-solid fa-arrows-rotate mr-1 text-[10px]"></i>重置演练
+                            </button>
+                        </div>
+
+                        <div id="simChatBox" class="flex-1 p-4 overflow-y-auto space-y-4 bg-[#fafaf7]">
+                            <!-- Dynamic messages -->
+                        </div>
+
+                        <div id="simAttachmentsArea"
+                            class="hidden px-4 py-2 bg-stone-100 border-t border-stone-200 flex flex-wrap gap-2 text-xs">
+                        </div>
+
+                        <div class="p-3 border-t border-stone-200 bg-white flex flex-col gap-2">
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="simInput" onkeypress="if(event.key==='Enter') sendSimMessage()"
+                                    placeholder="输入对白或粘贴截图/音频..."
+                                    class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 transition">
+
+                                <div class="flex items-center space-x-1 shrink-0">
+                                    <button onclick="triggerFileInput('simImageInput')" data-tooltip="发送图片/聊天截图"
+                                        class="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center transition border border-stone-200/80">
+                                        <i class="fa-solid fa-image text-xs"></i>
+                                    </button>
+                                    <button id="simRecordBtn" onclick="toggleAudioRecording('sim')"
+                                        data-tooltip="录制语音消息"
+                                        class="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center transition border border-stone-200/80 relative">
+                                        <i class="fa-solid fa-microphone text-xs"></i>
+                                        <span id="simRecordBadge"
+                                            class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
+                                    </button>
+                                    <button onclick="triggerFileInput('simDocInput')" data-tooltip="上传附件文档"
+                                        class="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center transition border border-stone-200/80">
+                                        <i class="fa-solid fa-paperclip text-xs"></i>
+                                    </button>
+                                </div>
+
+                                <button onclick="sendSimMessage()"
+                                    class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center transition shadow-sm">
+                                    <span>发送</span>
+                                    <i class="fa-solid fa-paper-plane ml-1.5 text-[10px]"></i>
+                                </button>
+                            </div>
+
+                            <input type="file" id="simImageInput" accept="image/*" class="hidden"
+                                onchange="handleSimFileUpload(event, 'image')">
+                            <input type="file" id="simDocInput" accept=".txt,.json,.csv,.pdf,.doc,.docx" class="hidden"
+                                onchange="handleSimFileUpload(event, 'file')">
+                            <input type="file" id="simAudioFileInput" accept="audio/*" class="hidden"
+                                onchange="handleSimFileUpload(event, 'audio')">
+                        </div>
+                    </div>
+
+                    <div
+                        class="light-card rounded-2xl p-4 flex flex-col justify-between border border-stone-200 overflow-y-auto space-y-4">
+                        <div>
+                            <div
+                                class="flex items-center space-x-2 text-xs font-bold text-stone-900 border-b border-stone-200 pb-2 mb-3">
+                                <i class="fa-solid fa-heart-pulse text-stone-700"></i>
+                                <span>军师实时情绪 & 侧边诊断</span>
+                            </div>
+
+                            <div class="space-y-3" id="simAdvisorBox">
+                                <div class="bg-stone-50 p-3 rounded-xl border border-stone-200/80 space-y-1.5">
+                                    <div class="flex justify-between items-center text-[11px]">
+                                        <span class="text-stone-500">对方当前心理防御状态</span>
+                                        <span class="text-emerald-600 font-bold" id="simDefensiveStatus">偏放松
+                                            (安全区)</span>
+                                    </div>
+                                    <div class="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
+                                        <div id="simDefensiveBar"
+                                            class="bg-emerald-500 h-full w-1/4 transition-all duration-300"></div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-stone-50 p-3 rounded-xl border border-stone-200/80 space-y-1">
+                                    <p class="text-[11px] font-semibold text-stone-800"><i
+                                            class="fa-solid fa-lightbulb text-amber-500 mr-1"></i>推荐破冰点</p>
+                                    <p class="text-xs text-stone-600" id="simAdvisorTip">
+                                        根据对方MBTI特征，提及具体共同兴趣（例如黑胶、某部新电影）能有效将回应率提升45%。</p>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <p class="text-[11px] font-semibold text-stone-800">💡 军师一键优化话术：</p>
+                                    <div id="simSuggestions" class="space-y-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-3 bg-stone-100 border border-stone-200 rounded-xl text-[11px] text-stone-600 flex items-center justify-between">
+                            <span>点击建议可直接填充至模拟输入框</span>
+                            <i class="fa-solid fa-arrow-turn-down-left"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: 【决策台】 -->
+            <section id="view-decision" class="tab-view hidden space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+                            <span>决策台与战术局势</span>
+                            <span
+                                class="text-xs bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full border border-stone-300 font-medium"
+                                id="decisionPersonaName">分析对象：林小A</span>
+                        </h2>
+                        <p class="text-xs text-stone-500 mt-1">支持粘贴文本、批量上传聊天截图、导入语音文件及完整聊天记录文件（TXT/JSON/CSV）。</p>
+                    </div>
+
+                    <button onclick="triggerEmergencyKit()"
+                        class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition">
+                        <i class="fa-solid fa-kit-medical text-xs"></i>
+                        <span>触发冷场/被拒绝【急救包】</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div class="lg:col-span-1 light-card p-5 rounded-2xl border border-stone-200 space-y-4 flex flex-col justify-between drag-zone"
+                        id="decisionDragZone">
+                        <div class="drag-overlay">
+                            <i class="fa-solid fa-file-arrow-up text-3xl mb-1"></i>
+                            <span>拖拽聊天截图、语音或记录文件至此</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-xs font-bold text-stone-900 flex items-center space-x-2">
+                                    <i class="fa-solid fa-cloud-arrow-up text-stone-700"></i>
+                                    <span>导入聊天记录 (多模态支持)</span>
+                                </h3>
+                                <span class="text-[10px] text-stone-400">图片/音频/TXT/JSON</span>
+                            </div>
+
+                            <textarea id="decisionChatInput" rows="5"
+                                placeholder="可直接粘贴微信/QQ聊天文字记录，或点击下方按钮上传截图、语音与聊天导出的文本/文件..."
+                                class="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 placeholder-stone-400 resize-none transition"></textarea>
+
+                            <div
+                                class="flex flex-wrap items-center justify-between gap-2 p-2 bg-stone-100/80 rounded-xl border border-stone-200/80">
+                                <div class="flex items-center space-x-1.5">
+                                    <button onclick="triggerFileInput('decisionImageInput')" data-tooltip="批量上传聊天截图"
+                                        class="px-2.5 py-1.5 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs font-medium flex items-center space-x-1 transition border border-stone-200 shadow-sm">
+                                        <i class="fa-solid fa-image text-stone-600"></i>
+                                        <span class="text-[11px]">截图</span>
+                                    </button>
+
+                                    <button onclick="triggerFileInput('decisionAudioInput')" data-tooltip="导入语音对话文件"
+                                        class="px-2.5 py-1.5 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs font-medium flex items-center space-x-1 transition border border-stone-200 shadow-sm">
+                                        <i class="fa-solid fa-file-audio text-amber-600"></i>
+                                        <span class="text-[11px]">语音文件</span>
+                                    </button>
+
+                                    <button id="decisionRecordBtn" onclick="toggleAudioRecording('decision')"
+                                        data-tooltip="语音口述记录"
+                                        class="px-2.5 py-1.5 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs font-medium flex items-center space-x-1 transition border border-stone-200 shadow-sm">
+                                        <i class="fa-solid fa-microphone text-rose-600"></i>
+                                        <span class="text-[11px]" id="decisionRecordText">实时录音</span>
+                                    </button>
+
+                                    <button onclick="triggerFileInput('decisionFileInput')"
+                                        data-tooltip="上传聊天记录导出文档 (.txt / .json)"
+                                        class="px-2.5 py-1.5 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs font-medium flex items-center space-x-1 transition border border-stone-200 shadow-sm">
+                                        <i class="fa-solid fa-file-lines text-sky-600"></i>
+                                        <span class="text-[11px]">聊天文档</span>
+                                    </button>
+                                </div>
+
+                                <button onclick="clearDecisionUploads()" data-tooltip="清空已上传附件"
+                                    class="text-stone-400 hover:text-rose-600 p-1 text-xs transition">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+
+                            <input type="file" id="decisionImageInput" accept="image/*" multiple class="hidden"
+                                onchange="handleDecisionFileUpload(event, 'image')">
+                            <input type="file" id="decisionAudioInput" accept="audio/*" class="hidden"
+                                onchange="handleDecisionFileUpload(event, 'audio')">
+                            <input type="file" id="decisionFileInput" accept=".txt,.json,.csv,.pdf,.doc,.docx"
+                                class="hidden" onchange="handleDecisionFileUpload(event, 'file')">
+
+                            <div id="decisionUploadsList" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
+                        </div>
+
+                        <button onclick="runDecisionAnalysis()"
+                            class="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-xl text-xs shadow-sm flex items-center justify-center space-x-2 transition active:scale-95">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i>
+                            <span>深度解构聊天信号 (含截图与语音)</span>
+                        </button>
+                    </div>
+
+                    <div
+                        class="lg:col-span-2 light-card p-5 rounded-2xl border border-stone-200 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xs font-bold text-stone-900 flex items-center space-x-2">
+                                <i class="fa-solid fa-chart-line text-stone-700"></i>
+                                <span>互动热度趋势 & 阶段评估</span>
+                            </h3>
+                            <span
+                                class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">当前区位：暧昧拉扯期
+                                (安全)</span>
+                        </div>
+                        <div class="h-48 w-full relative">
+                            <canvas id="heatChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <div class="light-card p-5 rounded-2xl border border-stone-200 space-y-4">
+                        <h3
+                            class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2">
+                            <i class="fa-solid fa-user-ninja text-amber-600"></i>
+                            <span>潜台词诊断与潜意识心态</span>
+                        </h3>
+                        <div class="space-y-3" id="subtextContainer">
+                            <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80">
+                                <div class="flex items-center justify-between text-xs mb-1">
+                                    <span class="font-bold text-stone-900">"还行吧 跟朋友一起去的"</span>
+                                    <span
+                                        class="text-[10px] text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded">防御度：中等</span>
+                                </div>
+                                <p class="text-xs text-stone-600 leading-relaxed">
+                                    【潜台词】：“跟朋友”特意模糊了性别，属于保留边界感的自我保护机制。回复简短代表对方处于社交疲惫期，并非对你反感，切忌连续追问对方是和谁去的。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="light-card p-5 rounded-2xl border border-stone-200 space-y-4">
+                        <h3
+                            class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2">
+                            <i class="fa-solid fa-flag-checkered text-stone-700"></i>
+                            <span>跨学科作战计划（3日推进策略）</span>
+                        </h3>
+                        <div class="space-y-2.5 text-xs" id="tacticalPlanBox">
+                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1">
+                                <div class="flex justify-between font-bold text-stone-900">
+                                    <span>Day 1: 情绪抽离与安全降温</span>
+                                    <span class="text-[10px] text-stone-500">策略：间歇性强化</span>
+                                </div>
+                                <p class="text-stone-600">暂不继续该话题，回复一句“好滴，那你先忙~”即可。给对方留出心理回甘空间。</p>
+                            </div>
+
+                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-500 space-y-1">
+                                <div class="flex justify-between font-bold text-stone-900">
+                                    <span>Day 2: 朋友圈视觉锚点唤醒</span>
+                                    <span class="text-[10px] text-stone-500">策略：社交证明</span>
+                                </div>
+                                <p class="text-stone-600">发布一张精致的美食或展览动态（结合对方MBTI爱好），触发对方的主动点赞与赞美。</p>
+                            </div>
+
+                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-rose-500 space-y-1">
+                                <div class="flex justify-between font-bold text-stone-900">
+                                    <span>Day 3: 降维邀约尝试</span>
+                                    <span class="text-[10px] text-stone-500">策略：登门槛效应</span>
+                                </div>
+                                <p class="text-stone-600">以“顺路顺便”为由发送轻量化邀约：“明天刚好在你公司附近办事，要不要顺便喝杯咖啡？”</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 4: 【时光轴】 -->
+            <section id="view-timeline" class="tab-view hidden space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
+                            <span>时光轴与关系沉淀</span>
+                            <span
+                                class="text-xs bg-stone-200 text-stone-800 border border-stone-300 px-2.5 py-0.5 rounded-full font-medium"
+                                id="timelinePersonaName">关于：林小A</span>
+                        </h2>
+                        <p class="text-xs text-stone-500 mt-1">记录你们的重要里程碑、高光时刻、每日复盘与情感结案。</p>
+                    </div>
+
+                    <button onclick="openFarewellModal()"
+                        class="px-4 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+                        <i class="fa-solid fa-box-archive text-xs"></i>
+                        <span>选择“走出这段关系”/ 人格归档</span>
+                    </button>
+                </div>
+
+                <div class="light-card p-6 rounded-2xl border border-stone-200 relative">
+                    <div class="absolute left-8 top-8 bottom-8 w-0.5 bg-stone-200"></div>
+                    <div class="space-y-8 relative pl-12" id="timelineList"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Global Floating AI Assistant: 【灵犀】 -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button id="lingxiBtn" onclick="toggleLingxiWindow()"
+            class="w-13 h-13 p-3.5 rounded-full bg-neutral-900 text-white flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all">
+            <i class="fa-solid fa-sparkles text-lg"></i>
+        </button>
+
+        <div id="lingxiWindow"
+            class="hidden absolute bottom-16 right-0 w-80 sm:w-96 h-[460px] light-card rounded-2xl shadow-2xl border border-stone-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+            <div class="p-3.5 bg-stone-100 border-b border-stone-200 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div
+                        class="w-7 h-7 rounded-lg bg-neutral-900 flex items-center justify-center text-white text-xs font-bold">
+                        灵
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-stone-900">灵犀 AI 全局军师</h4>
+                        <p class="text-[10px] text-stone-500">支持图文、语音诊断与情绪拆解</p>
+                    </div>
+                </div>
+                <button onclick="toggleLingxiWindow()" class="text-stone-400 hover:text-stone-700">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div id="lingxiChatBox" class="flex-1 p-3 overflow-y-auto space-y-3 text-xs bg-[#fafaf7]">
+                <div class="bg-white border border-stone-200 p-3 rounded-xl text-stone-700 shadow-sm">
+                    你好！我是全局悬浮助手<b>灵犀</b>。我可以随时帮你做分析对话、生成高情商回复，或者带你去【决策台】上传截图诊断。
+                </div>
+            </div>
+
+            <div class="px-3 py-2 bg-stone-100/80 border-t border-stone-200 flex flex-wrap gap-1.5 text-[10px]">
+                <button onclick="quickLingxiQuery('帮我分析这段对话，他是不是讨厌我？')"
+                    class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 px-2 py-1 rounded-md transition shadow-sm">🧐
+                    分析对话意图</button>
+                <button onclick="quickLingxiQuery('生成一个能约她出来的高情商话术')"
+                    class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 px-2 py-1 rounded-md transition shadow-sm">🍷
+                    生成邀约话术</button>
+                <button onclick="switchTab('decision')"
+                    class="bg-neutral-900 text-white px-2 py-1 rounded-md transition shadow-sm">📸 去决策台传截图</button>
+            </div>
+
+            <div class="p-2.5 bg-white border-t border-stone-200 flex items-center gap-2">
+                <input type="text" id="lingxiInput" onkeypress="if(event.key==='Enter') sendLingxiMsg()"
+                    placeholder="向灵犀直接提问..."
+                    class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                <button onclick="sendLingxiMsg()"
+                    class="w-8 h-8 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW MODAL: 个人档案 Modal -->
+    <div id="userProfileModal"
+        class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="light-card w-full max-w-lg rounded-2xl border border-stone-200 p-6 space-y-4 relative shadow-2xl">
+            <button onclick="closeUserProfileModal()"
+                class="absolute right-4 top-4 text-stone-400 hover:text-stone-700 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="flex items-center space-x-3 border-b border-stone-200 pb-3">
+                <div class="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-sm">
+                    <i class="fa-solid fa-id-card text-base"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-stone-900">我的个人档案</h3>
+                    <p class="text-xs text-stone-500">设置您的个人基础属性，军师 AI 将根据您的性格特质提供定制战术建议。</p>
+                </div>
+            </div>
+
+            <div class="space-y-3.5 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-stone-700 font-semibold mb-1">姓名 / 昵称</label>
+                        <input type="text" id="userProfileName" placeholder="例如：知心探长、小明..."
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 transition">
+                    </div>
+                    <div>
+                        <label class="block text-stone-700 font-semibold mb-1">我的 MBTI</label>
+                        <input type="text" id="userProfileMbti" placeholder="如: ENFJ / INTJ / INFP"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 transition uppercase">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-stone-700 font-semibold mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-thumbs-up text-emerald-600"></i>
+                        <span>个人优势</span>
+                    </label>
+                    <textarea id="userProfileStrengths" rows="3" placeholder="例如：同理心强、善于倾听、幽默风趣、极具耐心、直觉敏锐..."
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none transition"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-stone-700 font-semibold mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                        <span>个人短板 / 弱点</span>
+                    </label>
+                    <textarea id="userProfileWeaknesses" rows="3" placeholder="例如：容易内耗、缺乏安全感、说话过于直白、面对冷漠时容易焦虑情绪化..."
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none transition"></textarea>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-stone-100">
+                <span id="profileSaveToast"
+                    class="text-xs text-emerald-600 font-medium opacity-0 transition-opacity duration-300">
+                    <i class="fa-solid fa-circle-check mr-1"></i>个人档案更新成功！
+                </span>
+                <div class="flex space-x-2">
+                    <button onclick="closeUserProfileModal()"
+                        class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition">取消</button>
+                    <button onclick="saveUserProfile()"
+                        class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold shadow-sm transition active:scale-95">保存档案</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 1: Create Persona Modal -->
+    <div id="createPersonaModal"
+        class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="light-card w-full max-w-lg rounded-2xl border border-stone-200 p-6 space-y-4 relative drag-zone"
+            id="modalDragZone">
+            <div class="drag-overlay">
+                <i class="fa-solid fa-file-import text-3xl mb-1"></i>
+                <span>松开以提取对象特征并填充资料</span>
+            </div>
+
+            <button onclick="closeCreatePersonaModal()"
+                class="absolute right-4 top-4 text-stone-400 hover:text-stone-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-base font-bold text-stone-900 flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-stone-700"></i>
+                <span>创建 / 多模态导入新关系人人格</span>
+            </h3>
+
+            <div class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-stone-600 mb-1 font-medium">姓名/昵称</label>
+                        <input type="text" id="newPersonaName" placeholder="例如：林小A、陈Crush..."
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                    </div>
+                    <div>
+                        <label class="block text-stone-600 mb-1 font-medium">MBTI类型</label>
+                        <input type="text" id="newPersonaMbti" placeholder="如: ENFP / INTJ"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 uppercase">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-stone-600 mb-1 font-medium">关系阶段标签</label>
+                    <select id="newPersonaStatus"
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                        <option value="暗恋中">暗恋中</option>
+                        <option value="追求中">追求中</option>
+                        <option value="交往中">交往中</option>
+                        <option value="已分手/前任">已分手/前任</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-stone-600 mb-1 font-medium">聊天描述或文本痕迹</label>
+                    <textarea id="newPersonaDesc" rows="3" placeholder="写下对方的性格特征，或直接在下方拖入/上传微信聊天记录、截图与语音文件..."
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-stone-600 mb-1 font-medium">上传关联图片截图/语音/记录文件 (.txt/.json/.jpg)</label>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="triggerFileInput('modalFileInput')"
+                            class="flex-1 py-2 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl text-stone-700 text-xs flex items-center justify-center space-x-2 transition">
+                            <i class="fa-solid fa-cloud-arrow-up text-stone-700"></i>
+                            <span id="modalFileLabel">点击或拖拽上传多个文件</span>
+                        </button>
+                        <!-- 添加 multiple 属性 -->
+                        <input type="file" id="modalFileInput" accept="image/*,audio/*,.txt,.json,.csv" multiple
+                            class="hidden" onchange="handleModalFileUpload(event)">
+                    </div>
+                    <!-- 动态文件预览列表 -->
+                    <div id="modalUploadList" class="mt-2 space-y-2 max-h-36 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="closeCreatePersonaModal()"
+                    class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition">取消</button>
+                <button onclick="saveNewPersona()"
+                    class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold shadow-sm transition">AI提取并创建档案</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Emergency Kit Modal -->
+    <div id="emergencyModal"
+        class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="light-card w-full max-w-lg rounded-2xl border border-rose-200 p-6 space-y-4 relative">
+            <button onclick="closeEmergencyModal()" class="absolute right-4 top-4 text-stone-400 hover:text-stone-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center space-x-3 text-rose-600">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                    <i class="fa-solid fa-kit-medical text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-stone-900">危机干预急救包</h3>
+                    <p class="text-xs text-rose-600">检测到关系冷场或言语受阻，心理安抚与补救预案已启动。</p>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-xs bg-stone-50 p-4 rounded-xl border border-stone-200">
+                <div class="font-bold text-stone-900">🧠 军师心理建设：</div>
+                <p class="text-stone-600 leading-relaxed">
+                    请保持沉着！对方当下的冷淡绝不等于彻底否定你。过度追问或情绪化发泄只会彻底封死退路。黄金法则：<b>止损、断联48小时、不解释。</b></p>
+
+                <div class="font-bold text-stone-900 pt-2">💬 安全撤退补救话术：</div>
+                <div class="bg-white p-3 rounded-lg border border-stone-200 text-stone-800 font-medium">
+                    “好啦，那你先忙你的！改天有空再聊~” （展现轻松洒脱，不带任何道德绑架）
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2">
+                <button onclick="closeEmergencyModal()"
+                    class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold">收到，保持克制</button>
+                <button onclick="closeEmergencyModal(); switchTab('simulator')"
+                    class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm">带该局势去模拟舱演练</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Farewell Archive Modal -->
+    <div id="farewellModal"
+        class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="light-card w-full max-w-md rounded-2xl border border-stone-200 p-6 space-y-4 text-center">
+            <div
+                class="w-12 h-12 rounded-full bg-stone-100 text-amber-600 mx-auto flex items-center justify-center text-xl border border-stone-200">
+                <i class="fa-solid fa-feather-pointed"></i>
+            </div>
+            <h3 class="text-base font-bold text-stone-900">告别与人格归档</h3>
+            <p class="text-xs text-stone-500">“每一次告别，都是为了在更好的高处重逢自己。” 系统已为你整理关于该关系人的告别总结。</p>
+
+            <div class="bg-stone-50 p-4 rounded-xl text-left text-xs text-stone-700 italic border border-stone-200">
+                “致亲爱的你：感谢这段时光里的陪伴与教导。在这段关系中你学会了勇敢表达与适度抽离。现在，是时候把目光重新放回自己身上了。”
+            </div>
+
+            <div class="flex justify-center space-x-3 pt-2">
+                <button onclick="closeFarewellModal()"
+                    class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold">保留记忆</button>
+                <button onclick="archiveCurrentPersona()"
+                    class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm">温柔封存归档</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Application Store
+        const state = {
+            activeTab: 'personas',
+            activePersonaId: 'p1',
+            simMode: 'sparring', // 'sparring' | 'advisor'
+            simType: 'free',     // 'free' | 'scenario'
+
+            // User Self Profile Data Container
+            userProfile: {
+                name: '我',
+                mbti: 'ENFJ',
+                strengths: '善于同理与倾听，逻辑清晰，富有幽默感和洞察力',
+                weaknesses: '面对冷漠回复容易产生情绪内耗，边界感较弱，过于追求完美沟通'
+            },
+
+            // Multimodal State Containers
+            decisionUploads: [],
+            simUploads: [],
+            modalUpload: null,
+            modalUploads: [],   // 存储上传的文件信息 { name, type, dataURL/content, file }
+
+            // Audio Recording State
+            recordingState: {
+                isRecording: false,
+                target: null,
+                mediaRecorder: null,
+                audioChunks: [],
+                seconds: 0,
+                timerInterval: null
+            },
+
+            personas: [
+                {
+                    id: 'p1',
+                    name: '林小A',
+                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+                    status: '暗恋中',
+                    mbti: 'ENFP',
+                    tags: ['艺术系女孩', '喜欢黑胶唱片', '夜猫子'],
+                    personalityDesc: '热情开朗但内心细腻，喜欢有幽默感和审美的人。最怕沉闷唠叨。',
+                    heatScore: 78,
+                    defensiveLevel: 25,
+                    timeline: [
+                        { date: '2026-07-20', title: '首次咖啡厅偶遇', desc: '在3/4咖啡馆因为同样点了平白咖啡而搭讪。', tag: '里程碑' },
+                        { date: '2026-07-28', title: '深夜聊音乐到2点', desc: '分享各自喜欢的摇滚乐队，互动热度极高。', tag: '高光时刻' },
+                        { date: '2026-08-02', title: '电影邀约被婉拒', desc: '对方表示这周加班较忙，建议改天。', tag: '波动复盘' }
+                    ],
+                    chatHistory: [
+                        { sender: 'other', text: '哈哈哈哈那张唱片我也超级喜欢！你居然也有搜集！' },
+                        { sender: 'me', text: '对啊，之前在二手市集淘到的，当时第一眼就爱上了。' }
+                    ]
+                },
+                {
+                    id: 'p2',
+                    name: '陆沉 (Crush)',
+                    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
+                    status: '追求中',
+                    mbti: 'INTJ',
+                    tags: ['架构师', '逻辑严密', '喜欢户外徒步'],
+                    personalityDesc: '外冷内热，重逻辑理智，对夸夸其谈反感，欣赏高效有深度的沟通。',
+                    heatScore: 62,
+                    defensiveLevel: 45,
+                    timeline: [
+                        { date: '2026-07-15', title: '项目合作认识', desc: '专业能力互补，建立初步联系。', tag: '里程碑' }
+                    ],
+                    chatHistory: [
+                        { sender: 'other', text: '这份方案的第三部分数据逻辑很清晰，做得不错。' }
+                    ]
+                },
+                {
+                    id: 'p3',
+                    name: '许安 (前任)',
+                    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=150',
+                    status: '已分手/前任',
+                    mbti: 'INFP',
+                    tags: ['摄影师', '情感丰富', '已归档'],
+                    personalityDesc: '感性敏感，回忆较多，建议保持安全社交边界。',
+                    heatScore: 20,
+                    defensiveLevel: 80,
+                    timeline: [
+                        { date: '2026-06-01', title: '和平分手', desc: '双方决定退回朋友关系。', tag: '结案' }
+                    ],
+                    chatHistory: [
+                        { sender: 'other', text: '祝你一切顺利吧。' }
+                    ]
+                }
+            ]
+        };
+
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('/selfie');
+                if (!response.ok) throw new Error('网络请求失败');
+                const data = await response.json();
+                if (data.status === 'success' && data.profile) {
+                    // 更新 state
+                    state.userProfile = data.profile;
+                    // 同步更新 UI 中的表单（如果弹窗已打开）
+                    const nameInput = document.getElementById('userProfileName');
+                    const mbtiInput = document.getElementById('userProfileMbti');
+                    const strengthsInput = document.getElementById('userProfileStrengths');
+                    const weaknessesInput = document.getElementById('userProfileWeaknesses');
+                    if (nameInput) nameInput.value = data.profile.name || '我';
+                    if (mbtiInput) mbtiInput.value = data.profile.mbti || '';
+                    if (strengthsInput) strengthsInput.value = data.profile.strengths || '';
+                    if (weaknessesInput) weaknessesInput.value = data.profile.weaknesses || '';
+                }
+            } catch (error) {
+                console.warn('加载用户档案失败，使用默认值', error);
+                // 保留默认的 state.userProfile（已在代码中定义）
+            }
+        }
+
+        async function loadPersonas() {
+            try {
+                const response = await fetch('/selfie');
+                if (!response.ok) throw new Error('网络请求失败');
+                const data = await response.json();
+                if (data.status === 'success' && data.profile) {
+                    // 更新 state
+                    state.userProfile = data.profile;
+                    // 同步更新 UI 中的表单（如果弹窗已打开）
+                    const nameInput = document.getElementById('userProfileName');
+                    const mbtiInput = document.getElementById('userProfileMbti');
+                    const strengthsInput = document.getElementById('userProfileStrengths');
+                    const weaknessesInput = document.getElementById('userProfileWeaknesses');
+                    if (nameInput) nameInput.value = data.profile.name || '我';
+                    if (mbtiInput) mbtiInput.value = data.profile.mbti || '';
+                    if (strengthsInput) strengthsInput.value = data.profile.strengths || '';
+                    if (weaknessesInput) weaknessesInput.value = data.profile.weaknesses || '';
+                }
+            } catch (error) {
+                console.warn('加载用户档案失败，使用默认值', error);
+                // 保留默认的 state.userProfile（已在代码中定义）
+            }
+        }
+
+        let chartInstance = null;
+
+        window.onload = function () {
+            renderHeaderSelect();
+            renderPersonasView();
+            renderActivePersonaDetails();
+            initHeatChart();
+            setupDragAndDrop();
+            switchTab('personas');
+            loadUserProfile();
+            loadPersonas();
+        };
+
+        // User Profile Modal Control Functions
+        function openUserProfileModal() {
+            document.getElementById('userProfileName').value = state.userProfile.name || '';
+            document.getElementById('userProfileMbti').value = state.userProfile.mbti || '';
+            document.getElementById('userProfileStrengths').value = state.userProfile.strengths || '';
+            document.getElementById('userProfileWeaknesses').value = state.userProfile.weaknesses || '';
+
+            const toast = document.getElementById('profileSaveToast');
+            if (toast) toast.classList.add('opacity-0');
+
+            document.getElementById('userProfileModal').classList.remove('hidden');
+        }
+
+        function closeUserProfileModal() {
+            document.getElementById('userProfileModal').classList.add('hidden');
+        }
+
+        async function saveUserProfile() {
+            const name = document.getElementById('userProfileName').value.trim() || '我';
+            const mbti = document.getElementById('userProfileMbti').value.trim().toUpperCase() || '未知';
+            const strengths = document.getElementById('userProfileStrengths').value.trim() || '暂未填写';
+            const weaknesses = document.getElementById('userProfileWeaknesses').value.trim() || '暂未填写';
+
+            // 先更新本地状态（可选）
+            state.userProfile = { name, mbti, strengths, weaknesses };
+
+            // 发送到后端
+            try {
+                const response = await fetch('/selfie', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, mbti, strengths, weaknesses })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || '保存失败');
+
+                // 显示保存成功提示
+                const toast = document.getElementById('profileSaveToast');
+                if (toast) {
+                    toast.classList.remove('opacity-0');
+                    // toast.textContent = '✅ 个人档案已保存';
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0');
+                        closeUserProfileModal();
+                    }, 1000);
+                } else {
+                    closeUserProfileModal();
+                }
+            } catch (error) {
+                alert('保存失败：' + error.message);
+            }
+        }
+
+        function switchTab(tabId) {
+            state.activeTab = tabId;
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all font-medium text-xs text-stone-600 hover:bg-stone-200/50 hover:text-stone-900';
+            });
+
+            const currentView = document.getElementById(`view-${tabId}`);
+            if (currentView) currentView.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = 'tab-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all font-medium text-xs text-white bg-neutral-900 shadow-sm';
+            }
+
+            if (tabId === 'simulator') renderSimulatorView();
+            if (tabId === 'decision') renderDecisionView();
+            if (tabId === 'timeline') renderTimelineView();
+        }
+
+        function changeActivePersona(id) {
+            state.activePersonaId = id;
+            const current = getActivePersona();
+
+            document.getElementById('sidebarAvatar').src = current.avatar;
+            document.getElementById('sidebarName').innerText = current.name;
+            document.getElementById('sidebarStatus').innerText = `✨ ${current.status} | ${current.mbti}`;
+
+            document.getElementById('headerPersonaSelect').value = id;
+
+            renderPersonasView();
+            renderActivePersonaDetails();
+            if (state.activeTab === 'simulator') renderSimulatorView();
+            if (state.activeTab === 'decision') renderDecisionView();
+            if (state.activeTab === 'timeline') renderTimelineView();
+        }
+
+        function getActivePersona() {
+            return state.personas.find(p => p.id === state.activePersonaId) || state.personas[0];
+        }
+
+        function renderHeaderSelect() {
+            const select = document.getElementById('headerPersonaSelect');
+            select.innerHTML = state.personas.map(p => `
+                <option value="${p.id}" ${p.id === state.activePersonaId ? 'selected' : ''}>${p.name} (${p.status})</option>
+            `).join('');
+        }
+
+        function renderPersonasView() {
+            document.getElementById('personaCountBadge').innerText = `${state.personas.length} 位关系对象`;
+            const grid = document.getElementById('personasGrid');
+            grid.innerHTML = state.personas.map(p => {
+                const isSelected = p.id === state.activePersonaId;
+                return `
+                    <div onclick="changeActivePersona('${p.id}')" class="light-card-interactive p-5 rounded-2xl cursor-pointer border ${isSelected ? 'border-neutral-900 ring-1 ring-neutral-900' : 'border-stone-200'} relative overflow-hidden">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-3">
+                                <img src="${p.avatar}" class="w-12 h-12 rounded-full object-cover ring-2 ring-stone-200">
+                                <div>
+                                    <h3 class="font-bold text-sm text-stone-900 flex items-center gap-1.5">
+                                        <span>${p.name}</span>
+                                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}">${p.status}</span>
+                                    </h3>
+                                    <p class="text-xs text-stone-500 font-semibold mt-0.5">MBTI: ${p.mbti}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-stone-600 mt-3 line-clamp-2">${p.personalityDesc}</p>
+
+                        <div class="flex flex-wrap gap-1.5 mt-3">
+                            ${p.tags.map(t => `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md border border-stone-200">#${t}</span>`).join('')}
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
+                            <span class="text-stone-500">关系热度: <b class="text-stone-900">${p.heatScore}%</b></span>
+                            <span class="text-neutral-900 font-medium hover:underline text-[11px]">查看完整档案 <i class="fa-solid fa-arrow-right ml-0.5"></i></span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusBadgeStyle(status) {
+            switch (status) {
+                case '暗恋中': return 'bg-rose-100 text-rose-700 border border-rose-200';
+                case '追求中': return 'bg-amber-100 text-amber-800 border border-amber-200';
+                case '交往中': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+                default: return 'bg-stone-200 text-stone-700 border border-stone-300';
+            }
+        }
+
+        function renderActivePersonaDetails() {
+            const p = getActivePersona();
+            const panel = document.getElementById('personaDetailPanel');
+            panel.innerHTML = `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-200 pb-4">
+                    <div class="flex items-center space-x-4">
+                        <img src="${p.avatar}" class="w-16 h-16 rounded-2xl object-cover ring-2 ring-stone-200 shadow-sm">
+                        <div>
+                            <h3 class="text-lg font-bold text-stone-900">${p.name} 的深度关系档案</h3>
+                            <p class="text-xs text-stone-500">已导入 ${p.chatHistory.length} 条对话与多模态记录分析</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-stone-500">切换标签:</span>
+                        <select onchange="updatePersonaStatus('${p.id}', this.value)" class="bg-stone-50 border border-stone-200 text-xs text-stone-800 font-medium px-3 py-1.5 rounded-xl focus:outline-none focus:border-neutral-800">
+                            <option value="暗恋中" ${p.status === '暗恋中' ? 'selected' : ''}>暗恋中</option>
+                            <option value="追求中" ${p.status === '追求中' ? 'selected' : ''}>追求中</option>
+                            <option value="交往中" ${p.status === '交往中' ? 'selected' : ''}>交往中</option>
+                            <option value="已分手/前任" ${p.status === '已分手/前任' ? 'selected' : ''}>已分手/前任</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80">
+                        <span class="text-stone-500 font-medium">性格偏好解读</span>
+                        <p class="text-stone-800 mt-1 leading-relaxed">${p.personalityDesc}</p>
+                    </div>
+
+                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80">
+                        <span class="text-stone-500 font-medium">互动避雷指南</span>
+                        <p class="text-stone-800 mt-1 leading-relaxed">避免单字冷淡回复、切忌连续逼问行踪；谈论视觉、音乐或社交话题时回应意愿最高。</p>
+                    </div>
+
+                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80">
+                        <span class="text-stone-500 font-medium">多模态档案基底</span>
+                        <p class="text-stone-800 mt-1 leading-relaxed">当前版本：<b class="text-stone-900">v2.4 (支持语音/图片语义提纯)</b><br>历史积累: ${p.timeline.length} 个里程碑节点</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updatePersonaStatus(id, newStatus) {
+            const p = state.personas.find(x => x.id === id);
+            if (p) {
+                p.status = newStatus;
+                changeActivePersona(id);
+            }
+        }
+
+        function renderSimulatorView() {
+            const p = getActivePersona();
+            document.getElementById('simAvatar').src = p.avatar;
+            document.getElementById('simName').innerText = p.name;
+            document.getElementById('simTag').innerText = p.status;
+
+            const box = document.getElementById('simChatBox');
+            box.innerHTML = p.chatHistory.map(m => {
+                const isMe = m.sender === 'me';
+                let mediaContent = '';
+                if (m.image) {
+                    mediaContent += `<div class="mt-2"><img src="${m.image}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition"></div>`;
+                }
+                if (m.audio) {
+                    mediaContent += `
+                        <div class="mt-2 flex items-center space-x-2 bg-stone-100 border border-stone-200 p-2 rounded-lg text-xs">
+                            <button onclick="toggleAudioPlayback(this, '${m.audio}')" class="w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-play text-[10px]"></i>
+                            </button>
+                            <span class="text-stone-700 text-[11px]">语音消息</span>
+                        </div>
+                    `;
+                }
+                if (m.file) {
+                    mediaContent += `<div class="mt-2 text-[11px] text-stone-700 bg-stone-100 px-2 py-1 rounded border border-stone-200 flex items-center gap-1"><i class="fa-solid fa-file"></i> <span>${m.file}</span></div>`;
+                }
+
+                return `
+                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                        <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isMe ? 'bg-neutral-900 text-white rounded-br-none shadow-sm' : 'bg-white text-stone-800 rounded-bl-none border border-stone-200/90 shadow-sm'}">
+                            <div>${m.text}</div>
+                            ${mediaContent}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            box.scrollTop = box.scrollHeight;
+
+            renderSimulatorSuggestions();
+        }
+
+        function setSimMode(mode) {
+            state.simMode = mode;
+            document.getElementById('modeSparring').className = mode === 'sparring'
+                ? 'flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white text-stone-900 shadow-sm font-semibold border border-stone-200'
+                : 'flex items-center space-x-1.5 px-3 py-1 rounded-lg text-stone-500 hover:text-stone-900';
+
+            document.getElementById('modeAdvisor').className = mode === 'advisor'
+                ? 'flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white text-stone-900 shadow-sm font-semibold border border-stone-200'
+                : 'flex items-center space-x-1.5 px-3 py-1 rounded-lg text-stone-500 hover:text-stone-900';
+        }
+
+        function setSimType(type) {
+            state.simType = type;
+            const freeBtn = document.getElementById('simTypeFree');
+            const scenarioBtn = document.getElementById('simTypeScenario');
+            const container = document.getElementById('scenarioSelectorContainer');
+
+            if (type === 'free') {
+                freeBtn.className = 'px-3.5 py-1.5 rounded-lg font-semibold transition bg-neutral-900 text-white shadow-sm';
+                scenarioBtn.className = 'px-3.5 py-1.5 rounded-lg font-medium text-stone-600 hover:text-stone-900 transition';
+                container.classList.add('hidden');
+            } else {
+                scenarioBtn.className = 'px-3.5 py-1.5 rounded-lg font-semibold transition bg-neutral-900 text-white shadow-sm';
+                freeBtn.className = 'px-3.5 py-1.5 rounded-lg font-medium text-stone-600 hover:text-stone-900 transition';
+                container.classList.remove('hidden');
+            }
+        }
+
+        function sendSimMessage() {
+            const input = document.getElementById('simInput');
+            const textVal = input.value.trim();
+            if (!textVal && state.simUploads.length === 0) return;
+
+            const p = getActivePersona();
+            const msgObj = { sender: 'me', text: textVal || '【多模态附件内容】' };
+
+            state.simUploads.forEach(item => {
+                if (item.type === 'image') msgObj.image = item.url;
+                if (item.type === 'audio') msgObj.audio = item.url;
+                if (item.type === 'file') msgObj.file = item.name;
+            });
+
+            p.chatHistory.push(msgObj);
+            input.value = '';
+            state.simUploads = [];
+            renderSimAttachmentsArea();
+            renderSimulatorView();
+
+            setTimeout(() => {
+                let aiReplies = [
+                    `哈哈，收到你发的内容啦！感觉你说得挺有意思的。`,
+                    `嗯嗯... 我感觉我们可以进一步聊聊这个！`,
+                    `真的假的？那你下次可得带我一起感受一下！`,
+                    `哈哈，你这个人太细腻有趣了吧。`
+                ];
+                let reply = aiReplies[Math.floor(Math.random() * aiReplies.length)];
+                p.chatHistory.push({ sender: 'other', text: reply });
+                renderSimulatorView();
+            }, 900);
+        }
+
+        function renderSimulatorSuggestions() {
+            const suggestions = [
+                "“看你朋友圈照片，感觉你对咖啡很有研究呀，有什么推荐的店吗？”",
+                "“刚好这周末有场很棒的黑胶展，要不要一起顺路逛逛？”",
+                "“哈哈你今天说话语气好可爱，遇到了什么开心事吗？”"
+            ];
+
+            const box = document.getElementById('simSuggestions');
+            box.innerHTML = suggestions.map(s => `
+                <div onclick="applySuggestion('${s.replace(/\"/g, '&quot;')}')" class="p-2.5 bg-stone-50 hover:bg-white text-stone-800 rounded-xl cursor-pointer transition border border-stone-200/80 hover:border-stone-400 text-[11px] leading-relaxed shadow-sm">
+                    ${s}
+                </div>
+            `).join('');
+        }
+
+        function applySuggestion(text) {
+            document.getElementById('simInput').value = text.replace(/^“|”$/g, '');
+        }
+
+        function resetSimChat() {
+            const p = getActivePersona();
+            p.chatHistory = [{ sender: 'other', text: '嗨，最近在忙些什么呢？' }];
+            renderSimulatorView();
+        }
+
+        function renderDecisionView() {
+            const p = getActivePersona();
+            document.getElementById('decisionPersonaName').innerText = `分析对象：${p.name}`;
+            renderDecisionUploadsList();
+        }
+
+        function renderDecisionUploadsList() {
+            const list = document.getElementById('decisionUploadsList');
+            if (state.decisionUploads.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+
+            list.innerHTML = state.decisionUploads.map((item, idx) => {
+                if (item.type === 'image') {
+                    return `
+                        <div class="flex items-center justify-between p-2 bg-stone-50 rounded-xl border border-stone-200">
+                            <div class="flex items-center space-x-2 overflow-hidden">
+                                <img src="${item.url}" class="w-8 h-8 rounded-lg object-cover border border-stone-200 shrink-0">
+                                <span class="text-xs text-stone-800 truncate">${item.name}</span>
+                            </div>
+                            <button onclick="removeDecisionUpload(${idx})" class="text-stone-400 hover:text-rose-600 p-1 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    `;
+                } else if (item.type === 'audio') {
+                    return `
+                        <div class="p-2 bg-stone-50 rounded-xl border border-stone-200 space-y-1.5">
+                            <div class="flex items-center justify-between text-xs text-stone-800">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-file-audio text-amber-600"></i> <span class="truncate">${item.name}</span></span>
+                                <button onclick="removeDecisionUpload(${idx})" class="text-stone-400 hover:text-rose-600 p-1 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="flex items-center space-x-2 bg-white p-1.5 rounded-lg border border-stone-200">
+                                <button onclick="toggleAudioPlayback(this, '${item.url}')" class="w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px]">
+                                    <i class="fa-solid fa-play"></i>
+                                </button>
+                                <div class="flex-1 h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                                    <div class="bg-neutral-800 h-full w-1/3"></div>
+                                </div>
+                                <span class="text-[10px] text-stone-500">音频采样</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="flex items-center justify-between p-2 bg-stone-50 rounded-xl border border-stone-200 text-xs">
+                            <div class="flex items-center space-x-2 overflow-hidden">
+                                <i class="fa-solid fa-file-lines text-sky-600 text-sm"></i>
+                                <span class="text-stone-800 truncate">${item.name}</span>
+                            </div>
+                            <button onclick="removeDecisionUpload(${idx})" class="text-stone-400 hover:text-rose-600 p-1 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        function removeDecisionUpload(index) {
+            state.decisionUploads.splice(index, 1);
+            renderDecisionUploadsList();
+        }
+
+        function clearDecisionUploads() {
+            state.decisionUploads = [];
+            renderDecisionUploadsList();
+        }
+
+        function initHeatChart() {
+            const ctx = document.getElementById('heatChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+                    datasets: [{
+                        label: '互动情感热度值',
+                        data: [45, 52, 68, 60, 75, 82, 78],
+                        borderColor: '#1f1f1f',
+                        backgroundColor: 'rgba(31, 31, 31, 0.05)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#e11d48'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#737373', font: { size: 10 } } },
+                        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#737373', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function runDecisionAnalysis() {
+            const text = document.getElementById('decisionChatInput').value.trim();
+            const uploadCount = state.decisionUploads.length;
+
+            if (!text && uploadCount === 0) return;
+
+            const subtextContainer = document.getElementById('subtextContainer');
+            subtextContainer.innerHTML = `
+                <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-stone-900">多模态信号整合 (已提纯 ${uploadCount} 个附件)</span>
+                        <span class="text-[10px] text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">热情度：升高</span>
+                    </div>
+                    <p class="text-xs text-stone-600 leading-relaxed">【视觉/语音潜台词】：解析图像与语音语调后，发现对方在结尾使用了上扬语调与衍生表情符号，表明心理防御层已降低，处于高粘性社交期。</p>
+                </div>
+            `;
+
+            if (chartInstance) {
+                chartInstance.data.datasets[0].data = [50, 60, 72, 65, 80, 88, 92];
+                chartInstance.update();
+            }
+        }
+
+        function renderTimelineView() {
+            const p = getActivePersona();
+            document.getElementById('timelinePersonaName').innerText = `关于：${p.name}`;
+
+            const list = document.getElementById('timelineList');
+            list.innerHTML = p.timeline.map(item => `
+                <div class="relative">
+                    <div class="absolute -left-[41px] top-1 w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] ring-4 ring-white shadow-sm">
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-stone-900">${item.title}</span>
+                            <span class="text-[10px] text-stone-700 bg-stone-200 px-2 py-0.5 rounded font-medium">${item.tag}</span>
+                        </div>
+                        <p class="text-xs text-stone-600">${item.desc}</p>
+                        <span class="text-[10px] text-stone-400 block pt-1">${item.date}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function triggerFileInput(id) {
+            document.getElementById(id).click();
+        }
+
+        function handleDecisionFileUpload(e, type) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                if (type === 'image' || type === 'audio') {
+                    reader.readAsDataURL(file);
+                    reader.onload = (evt) => {
+                        state.decisionUploads.push({
+                            id: Date.now() + Math.random(),
+                            type,
+                            name: file.name,
+                            url: evt.target.result
+                        });
+                        renderDecisionUploadsList();
+                    };
+                } else {
+                    reader.readAsText(file);
+                    reader.onload = (evt) => {
+                        state.decisionUploads.push({
+                            id: Date.now() + Math.random(),
+                            type: 'file',
+                            name: file.name,
+                            content: evt.target.result
+                        });
+                        const currentInput = document.getElementById('decisionChatInput');
+                        currentInput.value += `\n[文件导入 ${file.name}]:\n` + evt.target.result.slice(0, 300) + '...';
+                        renderDecisionUploadsList();
+                    };
+                }
+            });
+            e.target.value = '';
+        }
+
+        function handleSimFileUpload(e, type) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (evt) => {
+                state.simUploads.push({
+                    type,
+                    name: file.name,
+                    url: evt.target.result
+                });
+                renderSimAttachmentsArea();
+            };
+            e.target.value = '';
+        }
+
+        function renderSimAttachmentsArea() {
+            const area = document.getElementById('simAttachmentsArea');
+            if (state.simUploads.length === 0) {
+                area.classList.add('hidden');
+                return;
+            }
+            area.classList.remove('hidden');
+            area.innerHTML = state.simUploads.map((item, idx) => `
+                <div class="flex items-center space-x-1.5 bg-white px-2.5 py-1 rounded-lg border border-stone-200 text-stone-800 shadow-sm">
+                    <i class="fa-solid ${item.type === 'image' ? 'fa-image text-stone-700' : 'fa-paperclip text-sky-600'}"></i>
+                    <span class="truncate max-w-[120px] text-[11px]">${item.name}</span>
+                    <button onclick="state.simUploads.splice(${idx},1); renderSimAttachmentsArea();" class="text-stone-400 hover:text-rose-600 ml-1"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function handleModalFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            state.modalUpload = file;
+            document.getElementById('modalFileLabel').innerText = `已选取: ${file.name}`;
+            const preview = document.getElementById('modalUploadPreview');
+            preview.classList.remove('hidden');
+            document.getElementById('modalUploadName').innerText = file.name;
+        }
+
+        async function toggleAudioRecording(target) {
+            const recState = state.recordingState;
+
+            if (recState.isRecording) {
+                if (recState.mediaRecorder) {
+                    recState.mediaRecorder.stop();
+                }
+                clearInterval(recState.timerInterval);
+                recState.isRecording = false;
+                updateRecordingUI(target, false);
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recState.mediaRecorder = new MediaRecorder(stream);
+                recState.audioChunks = [];
+
+                recState.mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recState.audioChunks.push(e.data);
+                };
+
+                recState.mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(recState.audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+
+                    if (target === 'decision') {
+                        state.decisionUploads.push({
+                            id: Date.now(),
+                            type: 'audio',
+                            name: `语音录音_${new Date().toLocaleTimeString()}.webm`,
+                            url: audioUrl
+                        });
+                        renderDecisionUploadsList();
+                    } else if (target === 'sim') {
+                        state.simUploads.push({
+                            type: 'audio',
+                            name: `口述语音.webm`,
+                            url: audioUrl
+                        });
+                        renderSimAttachmentsArea();
+                    }
+                };
+
+                recState.mediaRecorder.start();
+                recState.isRecording = true;
+                recState.target = target;
+                recState.seconds = 0;
+
+                recState.timerInterval = setInterval(() => {
+                    recState.seconds++;
+                }, 1000);
+
+                updateRecordingUI(target, true);
+
+            } catch (err) {
+                state.decisionUploads.push({
+                    id: Date.now(),
+                    type: 'audio',
+                    name: `模拟语音录音.mp3`,
+                    url: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg'
+                });
+                if (target === 'decision') renderDecisionUploadsList();
+            }
+        }
+
+        function updateRecordingUI(target, isRec) {
+            if (target === 'decision') {
+                const btn = document.getElementById('decisionRecordBtn');
+                const txt = document.getElementById('decisionRecordText');
+                if (isRec) {
+                    btn.classList.add('bg-rose-600', 'text-white', 'btn-record-active');
+                    txt.innerText = '录制中... (点击停止)';
+                } else {
+                    btn.classList.remove('bg-rose-600', 'text-white', 'btn-record-active');
+                    txt.innerText = '实时录音';
+                }
+            } else if (target === 'sim') {
+                const badge = document.getElementById('simRecordBadge');
+                if (isRec) badge.classList.remove('hidden');
+                else badge.classList.add('hidden');
+            }
+        }
+
+        function setupDragAndDrop() {
+            const zones = [
+                { id: 'decisionDragZone', target: 'decision' },
+                { id: 'modalDragZone', target: 'modal' },
+                { id: 'simDragZone', target: 'sim' }
+            ];
+
+            zones.forEach(z => {
+                const elem = document.getElementById(z.id);
+                if (!elem) return;
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    elem.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        elem.classList.add('dragging');
+                    }, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    elem.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        elem.classList.remove('dragging');
+                    }, false);
+                });
+
+                elem.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = Array.from(dt.files);
+
+                    if (z.target === 'decision') {
+                        files.forEach(file => {
+                            const type = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('audio/') ? 'audio' : 'file');
+                            const reader = new FileReader();
+                            if (type === 'file') {
+                                reader.readAsText(file);
+                                reader.onload = (evt) => {
+                                    state.decisionUploads.push({ id: Date.now(), type, name: file.name, content: evt.target.result });
+                                    renderDecisionUploadsList();
+                                };
+                            } else {
+                                reader.readAsDataURL(file);
+                                reader.onload = (evt) => {
+                                    state.decisionUploads.push({ id: Date.now(), type, name: file.name, url: evt.target.result });
+                                    renderDecisionUploadsList();
+                                };
+                            }
+                        });
+                    } else if (z.target === 'modal') {
+                        if (files[0]) {
+                            state.modalUpload = files[0];
+                            document.getElementById('modalFileLabel').innerText = `已选取: ${files[0].name}`;
+                        }
+                    } else if (z.target === 'sim') {
+                        if (files[0]) {
+                            const type = files[0].type.startsWith('image/') ? 'image' : 'file';
+                            const reader = new FileReader();
+                            reader.readAsDataURL(files[0]);
+                            reader.onload = (evt) => {
+                                state.simUploads.push({ type, name: files[0].name, url: evt.target.result });
+                                renderSimAttachmentsArea();
+                            };
+                        }
+                    }
+                });
+            });
+        }
+
+        function toggleAudioPlayback(btnElem, url) {
+            const icon = btnElem.querySelector('i');
+            if (icon.classList.contains('fa-play')) {
+                icon.classList.remove('fa-play');
+                icon.classList.add('fa-pause');
+                setTimeout(() => {
+                    icon.classList.remove('fa-pause');
+                    icon.classList.add('fa-play');
+                }, 3000);
+            } else {
+                icon.classList.remove('fa-pause');
+                icon.classList.add('fa-play');
+            }
+        }
+
+        function toggleLingxiWindow() {
+            document.getElementById('lingxiWindow').classList.toggle('hidden');
+        }
+
+        function sendLingxiMsg() {
+            const input = document.getElementById('lingxiInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            const box = document.getElementById('lingxiChatBox');
+            box.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-neutral-900 text-white p-2.5 rounded-xl max-w-[85%] text-xs shadow-sm">
+                        ${val}
+                    </div>
+                </div>
+            `;
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+
+            setTimeout(() => {
+                box.innerHTML += `
+                    <div class="bg-white border border-stone-200 text-stone-800 p-2.5 rounded-xl max-w-[85%] text-xs space-y-2 shadow-sm">
+                        <p>💡 <b>灵犀诊断回复：</b>建议点击【决策台】直接拖入聊天截图或记录文件，能为你输出更准确的心态解构报告。</p>
+                        <button onclick="switchTab('decision')" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 px-2 py-1 rounded transition">
+                            👉 跳转至【决策台】分析截图
+                        </button>
+                    </div>
+                `;
+                box.scrollTop = box.scrollHeight;
+            }, 600);
+        }
+
+        function quickLingxiQuery(q) {
+            document.getElementById('lingxiInput').value = q;
+            sendLingxiMsg();
+        }
+
+        function openCreatePersonaModal() { document.getElementById('createPersonaModal').classList.remove('hidden'); }
+        function closeCreatePersonaModal() { document.getElementById('createPersonaModal').classList.add('hidden'); }
+
+        function saveNewPersona() {
+            const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
+            const status = document.getElementById('newPersonaStatus').value;
+            const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
+            const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
+
+            const newP = {
+                id: 'p_' + Date.now(),
+                name,
+                avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
+                status,
+                mbti,
+                tags: ['最新导入', '多模态AI提取'],
+                personalityDesc: desc,
+                heatScore: 50,
+                defensiveLevel: 50,
+                timeline: [{ date: '2026-08-04', title: '多模态档案建立', desc: '导入聊天记录与附件解析生成。', tag: '档案生成' }],
+                chatHistory: [{ sender: 'other', text: '你好呀！' }]
+            };
+
+            state.personas.unshift(newP);
+            state.activePersonaId = newP.id;
+            renderHeaderSelect();
+            closeCreatePersonaModal();
+            changeActivePersona(newP.id);
+        }
+
+        function triggerEmergencyKit() { document.getElementById('emergencyModal').classList.remove('hidden'); }
+        function closeEmergencyModal() { document.getElementById('emergencyModal').classList.add('hidden'); }
+
+        function openFarewellModal() { document.getElementById('farewellModal').classList.remove('hidden'); }
+        function closeFarewellModal() { document.getElementById('farewellModal').classList.add('hidden'); }
+
+        function archiveCurrentPersona() {
+            closeFarewellModal();
+            updatePersonaStatus(state.activePersonaId, '已分手/前任');
+        }
+
+        function exportStudioData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                userProfile: state.userProfile,
+                personas: state.personas
+            }, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Lingxi_Studio_Export_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function handleGlobalSearch(val) {
+            if (!val.trim()) return;
+            const found = state.personas.find(p => p.name.includes(val) || p.mbti.toLowerCase().includes(val.toLowerCase()));
+            if (found) changeActivePersona(found.id);
+        }
+    </script>
+</body>
+
+</html>
