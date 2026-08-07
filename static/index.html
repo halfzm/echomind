@@ -1608,14 +1608,90 @@
         }
 
         function handleModalFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
 
-            state.modalUpload = file;
-            document.getElementById('modalFileLabel').innerText = `已选取: ${file.name}`;
-            const preview = document.getElementById('modalUploadPreview');
-            preview.classList.remove('hidden');
-            document.getElementById('modalUploadName').innerText = file.name;
+            const listContainer = document.getElementById('modalUploadList');
+            // 更新按钮标签
+            document.getElementById('modalFileLabel').innerText = `已选取 ${files.length} 个文件`;
+
+            files.forEach((file) => {
+                // 判断类型
+                let type = 'file';
+                if (file.type.startsWith('image/')) type = 'image';
+                else if (file.type.startsWith('audio/')) type = 'audio';
+
+                const reader = new FileReader();
+                // 对于文本类文件，读取为文本以便后续使用；其他读取为 DataURL 用于预览
+                if (type === 'file' && (file.name.endsWith('.txt') || file.name.endsWith('.json') || file.name.endsWith('.csv'))) {
+                    reader.readAsText(file);
+                    reader.onload = (evt) => {
+                        const entry = {
+                            id: Date.now() + Math.random(),
+                            name: file.name,
+                            type: type,
+                            data: evt.target.result,   // 文本内容
+                            file: file,
+                            url: null
+                        };
+                        state.modalUploads.push(entry);
+                        renderModalUploadList();
+                    };
+                } else {
+                    reader.readAsDataURL(file);
+                    reader.onload = (evt) => {
+                        const entry = {
+                            id: Date.now() + Math.random(),
+                            name: file.name,
+                            type: type,
+                            url: evt.target.result,     // 图片/音频的 DataURL
+                            file: file,
+                            data: null
+                        };
+                        state.modalUploads.push(entry);
+                        renderModalUploadList();
+                    };
+                }
+            });
+
+            // 清空 input 以便重复选择同一文件
+            e.target.value = '';
+        }
+
+        // 渲染上传文件列表
+        function renderModalUploadList() {
+            const container = document.getElementById('modalUploadList');
+            if (state.modalUploads.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = state.modalUploads.map((item, idx) => {
+                let icon = 'fa-file';
+                if (item.type === 'image') icon = 'fa-image';
+                else if (item.type === 'audio') icon = 'fa-file-audio';
+                return `
+            <div class="flex items-center justify-between p-2 bg-stone-50 rounded-xl border border-stone-200 text-xs">
+                <div class="flex items-center space-x-2 overflow-hidden">
+                    <i class="fa-solid ${icon} ${item.type === 'audio' ? 'text-amber-600' : item.type === 'image' ? 'text-stone-700' : 'text-sky-600'}"></i>
+                    <span class="text-stone-800 truncate max-w-[200px]">${item.name}</span>
+                    ${item.type === 'image' ? `<img src="${item.url}" class="w-6 h-6 rounded object-cover border border-stone-200 shrink-0">` : ''}
+                </div>
+                <button onclick="removeModalFile(${idx})" class="text-stone-400 hover:text-rose-600 p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        `;
+            }).join('');
+        }
+
+        // 删除单个文件
+        function removeModalFile(index) {
+            state.modalUploads.splice(index, 1);
+            renderModalUploadList();
+            // 更新提示标签
+            document.getElementById('modalFileLabel').innerText = state.modalUploads.length > 0
+                ? `已选取 ${state.modalUploads.length} 个文件`
+                : '点击或拖拽上传多个文件';
         }
 
         async function toggleAudioRecording(target) {
@@ -1825,13 +1901,32 @@
         }
 
         function openCreatePersonaModal() { document.getElementById('createPersonaModal').classList.remove('hidden'); }
-        function closeCreatePersonaModal() { document.getElementById('createPersonaModal').classList.add('hidden'); }
+        function closeCreatePersonaModal() {
+            document.getElementById('createPersonaModal').classList.add('hidden');
+            // 重置表单
+            document.getElementById('newPersonaName').value = '';
+            document.getElementById('newPersonaMbti').value = '';
+            document.getElementById('newPersonaStatus').value = '暗恋中'; // 默认选项
+            document.getElementById('newPersonaDesc').value = '';
+            // 清空上传的文件
+            state.modalUploads = [];
+            renderModalUploadList();
+            document.getElementById('modalFileLabel').innerText = '点击或拖拽上传多个文件';
+            // 清空文件输入框（可选）
+            document.getElementById('modalFileInput').value = '';
+        }
 
         function saveNewPersona() {
             const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
             const status = document.getElementById('newPersonaStatus').value;
             const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
             const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
+            // 构建附件数组（仅保留可用的信息）
+            const attachments = state.modalUploads.map(item => ({
+                name: item.name,
+                type: item.type,
+                data: item.data || item.url,   // 文本内容或 DataURL
+            }));
 
             const newP = {
                 id: 'p_' + Date.now(),
@@ -1844,7 +1939,8 @@
                 heatScore: 50,
                 defensiveLevel: 50,
                 timeline: [{ date: '2026-08-04', title: '多模态档案建立', desc: '导入聊天记录与附件解析生成。', tag: '档案生成' }],
-                chatHistory: [{ sender: 'other', text: '你好呀！' }]
+                chatHistory: [{ sender: 'other', text: '你好呀！' }],
+                attachments: attachments   // 新增字段存储上传的文件
             };
 
             state.personas.unshift(newP);
@@ -1852,6 +1948,11 @@
             renderHeaderSelect();
             closeCreatePersonaModal();
             changeActivePersona(newP.id);
+
+            // 清空已上传文件
+            state.modalUploads = [];
+            renderModalUploadList();
+            document.getElementById('modalFileLabel').innerText = '点击或拖拽上传多个文件';
         }
 
         function triggerEmergencyKit() { document.getElementById('emergencyModal').classList.remove('hidden'); }
