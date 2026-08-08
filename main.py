@@ -252,8 +252,8 @@ async def websocket_proxy(websocket: WebSocket):
                     messages = input_data.get("messages", [])
                     if messages is not None:
                         # 在最前面插入 system 消息
-                        system_msg = {"role": "system", "content": SYSTEM_INSTRUCTION}
-                        messages.insert(0, system_msg)
+                        # system_msg = {"role": "system", "content": SYSTEM_INSTRUCTION}
+                        # messages.insert(0, system_msg)
                         input_data["messages"] = messages
                         data["input"] = input_data
 

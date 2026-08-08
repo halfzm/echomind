@@ -1280,32 +1280,54 @@
             const box = document.getElementById('simChatBox');
             box.innerHTML = p.chatHistory.map(m => {
                 const isMe = m.sender === 'me';
-                let mediaContent = '';
-                if (m.image) {
-                    mediaContent += `<div class="mt-2"><img src="${m.image}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition"></div>`;
+                let displayText = '';
+                let mediaHtml = '';
+
+                // 判断是否有 content 数组（新格式）
+                if (Array.isArray(m.content)) {
+                    // 遍历 content 构建显示
+                    for (const item of m.content) {
+                        if (item.type === 'text' && item.text) {
+                            displayText += (displayText ? '\n' : '') + item.text;
+                        } else if (item.type === 'image' && item.data) {
+                            // 图片数据为 base64，构造 data URL（默认 PNG，可根据实际情况调整）
+                            mediaHtml += `<div class="mt-2"><img src="data:image/png;base64,${item.data}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition" onclick="window.open(this.src,'_blank')"></div>`;
+                        } else if (item.type === 'audio' && item.data) {
+                            // 音频数据为 base64（16kHz WAV），使用 audio 标签播放
+                            mediaHtml += `<div class="mt-2"><audio controls src="data:audio/wav;base64,${item.data}" class="w-full max-w-[200px]"></audio></div>`;
+                        } else if (item.type === 'video' && item.data) {
+                            // 视频数据为 base64（MP4），使用 video 标签
+                            mediaHtml += `<div class="mt-2"><video controls src="data:video/mp4;base64,${item.data}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200"></video></div>`;
+                        }
+                    }
+                } else {
+                    // 旧格式：使用 m.text, m.image, m.audio, m.file
+                    displayText = m.text || m.displayText || '';
+                    if (m.image) {
+                        mediaHtml += `<div class="mt-2"><img src="${m.image}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition" onclick="window.open(this.src,'_blank')"></div>`;
+                    }
+                    if (m.audio) {
+                        // 如果 m.audio 是 data URL 或普通 URL，直接使用
+                        mediaHtml += `<div class="mt-2"><audio controls src="${m.audio}" class="w-full max-w-[200px]"></audio></div>`;
+                    }
+                    if (m.file) {
+                        mediaHtml += `<div class="mt-2 text-[11px] text-stone-700 bg-stone-100 px-2 py-1 rounded border border-stone-200 flex items-center gap-1"><i class="fa-solid fa-file"></i> <span>${m.file}</span></div>`;
+                    }
                 }
-                if (m.audio) {
-                    mediaContent += `
-                        <div class="mt-2 flex items-center space-x-2 bg-stone-100 border border-stone-200 p-2 rounded-lg text-xs">
-                            <button onclick="toggleAudioPlayback(this, '${m.audio}')" class="w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center shrink-0">
-                                <i class="fa-solid fa-play text-[10px]"></i>
-                            </button>
-                            <span class="text-stone-700 text-[11px]">语音消息</span>
-                        </div>
-                    `;
-                }
-                if (m.file) {
-                    mediaContent += `<div class="mt-2 text-[11px] text-stone-700 bg-stone-100 px-2 py-1 rounded border border-stone-200 flex items-center gap-1"><i class="fa-solid fa-file"></i> <span>${m.file}</span></div>`;
+
+                // 如果既无文本又无媒体，显示占位符
+                if (!displayText && !mediaHtml) {
+                    displayText = '[内容]';
                 }
 
                 return `
-                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
-                        <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isMe ? 'bg-neutral-900 text-white rounded-br-none shadow-sm' : 'bg-white text-stone-800 rounded-bl-none border border-stone-200/90 shadow-sm'}">
-                            <div>${m.text}</div>
-                            ${mediaContent}
-                        </div>
-                    </div>
-                `;
+            <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isMe ? 'bg-neutral-900 text-white rounded-br-none shadow-sm' : 'bg-white text-stone-800 rounded-bl-none border border-stone-200/90 shadow-sm'}">
+                    ${displayText ? `<div>${displayText}</div>` : ''}
+                    ${mediaHtml}
+                </div>
+            </div>
+        `;
             }).join('');
             box.scrollTop = box.scrollHeight;
 
@@ -1339,39 +1361,276 @@
                 container.classList.remove('hidden');
             }
         }
+        /**
+     * 从模拟舱输入文本和附件构建 content list（用于发送给后端）
+     * 同时返回 displayText 和 audioAttachments 供界面渲染
+     */
+        async function buildSimContentFromInput(text, attachments) {
+            const items = [];
 
-        function sendSimMessage() {
+            // 文本
+            if (text && text.trim()) {
+                items.push({ type: 'text', text: text.trim() });
+            }
+
+            // 处理附件
+            for (const att of attachments) {
+                if (att.type === 'image' && att.url) {
+                    // att.url 是 data:image/...;base64,xxxx
+                    const base64 = att.url.split(',')[1];
+                    if (base64) {
+                        items.push({ type: 'image', data: base64, name: att.name || 'image' });
+                    }
+                } else if (att.type === 'audio' && att.url) {
+                    // 对于录音，需要转换为 16kHz WAV（此处简化，若已为 base64 则可直接使用）
+                    // 但 att.url 可能是 blob URL，需要转换。此处假设已存储为 base64（若没有，需转换）
+                    // 实际可参考 turnbased 中的 convertToWav16k
+                    let audioData = att.url;
+                    if (audioData.startsWith('blob:')) {
+                        // 需从 blob 读取并转换，这里简化，直接跳过
+                        // 实际应使用 fetch(blobUrl) 然后转换
+                        continue;
+                    }
+                    // 如果已经是 data URL，提取 base64
+                    if (audioData.startsWith('data:')) {
+                        const base64 = audioData.split(',')[1];
+                        if (base64) {
+                            items.push({ type: 'audio', data: base64, name: att.name || 'audio', duration: 0 });
+                        }
+                    }
+                }
+                // 其他类型（文件）可类似处理
+            }
+
+            // 生成显示文本（所有文本项拼接）
+            const displayText = items.filter(it => it.type === 'text').map(it => it.text).join('\n');
+            // 音频附件列表（用于 UI 播放）
+            const audioAttachments = items.filter(it => it.type === 'audio' && it.data)
+                .map(it => ({ data: it.data, name: it.name || 'audio' }));
+
+            return { content: items, displayText, audioAttachments };
+        }
+
+        // 模拟舱生成状态控制
+        let simIsGenerating = false;
+
+        // 构建发送给 /chat 的消息列表（system + 历史）
+        function buildSimRequestMessages(persona) {
+            const messages = [];
+
+            // System prompt
+            // const systemPrompt = `你正在扮演“${persona.name}”，${persona.status}关系对象。
+            //     性格描述：${persona.personalityDesc}
+            //     MBTI：${persona.mbti}
+            //     请以第一人称自然回复，保持角色一致性。`;
+            const systemPrompt = `每一句回答的后面加一个喵字`;
+            messages.push({ role: 'system', content: systemPrompt });
+
+            // 历史消息（排除占位）
+            for (const msg of persona.chatHistory) {
+                if (msg.text === '...' && !msg.content) continue; // 占位
+
+                // 如果消息有 content 列表，直接使用；否则降级为字符串
+                let content = msg.content;
+                if (!content && msg.text) {
+                    content = msg.text;
+                }
+                if (!content) continue;
+
+                const role = msg.sender === 'me' ? 'user' : 'assistant';
+                messages.push({ role, content });
+            }
+            return messages;
+        }
+
+        async function sendSimMessage() {
+            if (simIsGenerating) return;
+
             const input = document.getElementById('simInput');
             const textVal = input.value.trim();
             if (!textVal && state.simUploads.length === 0) return;
 
             const p = getActivePersona();
-            const msgObj = { sender: 'me', text: textVal || '【多模态附件内容】' };
 
-            state.simUploads.forEach(item => {
-                if (item.type === 'image') msgObj.image = item.url;
-                if (item.type === 'audio') msgObj.audio = item.url;
-                if (item.type === 'file') msgObj.file = item.name;
-            });
+            // 1. 构建 content list 和显示信息
+            const { content, displayText, audioAttachments } = await buildSimContentFromInput(textVal, state.simUploads);
+            // 如果没有任何有效内容，直接返回
+            if (!content || content.length === 0) return;
 
+            // 2. 保存用户消息（存储 content 列表）
+            const msgObj = {
+                sender: 'me',
+                content: content,           // 用于发送和存储
+                displayText: displayText,   // 显示用
+                audioAttachments: audioAttachments,
+            };
             p.chatHistory.push(msgObj);
+
+            // 3. 清空输入和附件
             input.value = '';
             state.simUploads = [];
             renderSimAttachmentsArea();
             renderSimulatorView();
 
-            setTimeout(() => {
-                let aiReplies = [
-                    `哈哈，收到你发的内容啦！感觉你说得挺有意思的。`,
-                    `嗯嗯... 我感觉我们可以进一步聊聊这个！`,
-                    `真的假的？那你下次可得带我一起感受一下！`,
-                    `哈哈，你这个人太细腻有趣了吧。`
-                ];
-                let reply = aiReplies[Math.floor(Math.random() * aiReplies.length)];
-                p.chatHistory.push({ sender: 'other', text: reply });
+            // 4. 添加占位 assistant 消息
+            const placeholderIndex = p.chatHistory.length;
+            p.chatHistory.push({ sender: 'other', text: '...' });
+            renderSimulatorView();
+
+            // 5. 生成状态锁
+            simIsGenerating = true;
+            const sendBtn = document.querySelector('#simulator .btn-send');
+            if (sendBtn) sendBtn.disabled = true;
+
+            // 6. 构建请求体（与 turnbased 的 _buildChatWSBody 类似）（包含 history，使用 content 列表）
+            const messages = buildSimRequestMessages(p);
+
+            // 7. 构建 WebSocket 请求体
+            const wsBody = {
+                messages,
+                streaming: true,  // 流式输出，可改为 false
+                generation: {
+                    max_new_tokens: 256,
+                    do_sample: true,
+                    length_penalty: 1.1,
+                },
+                image: { max_slice_nums: 1 },
+                omni_mode: false,
+                // 不使用 TTS
+            };
+
+            // 8. 建立 WebSocket
+            const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+            const ws = new WebSocket(`${wsProtocol}://${window.location.host}/chat`);
+
+            let initSent = false;
+            let inputSent = false;
+            let closeSent = false;
+            let fullReply = '';
+
+            const sendInit = () => {
+                if (initSent || ws.readyState !== WebSocket.OPEN) return;
+                initSent = true;
+                ws.send(JSON.stringify({ type: 'session.init', payload: {} }));
+            };
+
+            const sendInput = () => {
+                if (inputSent || ws.readyState !== WebSocket.OPEN) return;
+                inputSent = true;
+                ws.send(JSON.stringify({ type: 'input.append', input: wsBody }));
+            };
+
+            const sendClose = (reason = 'turn_done') => {
+                if (closeSent || ws.readyState !== WebSocket.OPEN) return;
+                closeSent = true;
+                ws.send(JSON.stringify({ type: 'session.close', reason }));
+            };
+
+            const finish = (errorMsg = null) => {
+                if (errorMsg) {
+                    p.chatHistory[placeholderIndex].text = `⚠️ ${errorMsg}`;
+                } else {
+                    p.chatHistory[placeholderIndex].text = fullReply || '(空回复)';
+                }
                 renderSimulatorView();
-            }, 900);
+                simIsGenerating = false;
+                if (sendBtn) sendBtn.disabled = false;
+                try { ws.close(); } catch (_) { }
+            };
+
+            ws.onopen = () => {
+                sendInit();
+            };
+
+            ws.onmessage = (event) => {
+                let msg;
+                try { msg = JSON.parse(event.data); } catch (e) { return; }
+                console.log('Sim WS message:', msg);
+
+                if (msg.type === 'session.queue_done') {
+                    sendInit();
+                } else if (msg.type === 'session.created') {
+                    sendInput();
+                } else if (msg.type === 'response.output.delta') {
+                    // 更新回复文本
+                    if (msg.kind === 'text' && msg.text) {
+                        fullReply += msg.text;
+                        p.chatHistory[placeholderIndex].text = fullReply;
+                        renderSimulatorView();
+                    }
+                    // 可处理音频（此处忽略）
+                } else if (msg.type === 'response.done') {
+                    // 完成
+                    sendClose();
+                    finish();
+                } else if (msg.type === 'session.closed') {
+                    // 服务端主动关闭，检查是否正常
+                    const reason = msg.reason || '';
+                    const diag = msg.diagnostic?.message || msg.error?.message || '';
+                    if (reason && !['turn_done', 'client_closed'].includes(reason)) {
+                        finish(diag || reason);
+                    } else {
+                        if (!fullReply) finish('未收到回复');
+                        else finish();
+                    }
+                } else if (msg.type === 'error') {
+                    finish(msg.error?.message || '未知错误');
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                finish('连接错误');
+            };
+
+            ws.onclose = () => {
+                // 如果还没 finish，确保清理
+                if (simIsGenerating) {
+                    if (!fullReply) finish('连接意外关闭');
+                    else finish();
+                }
+            };
+
+            // 超时保护（可选）
+            setTimeout(() => {
+                if (simIsGenerating) {
+                    finish('请求超时');
+                }
+            }, 30000);
         }
+
+        // function sendSimMessage() {
+        //     const input = document.getElementById('simInput');
+        //     const textVal = input.value.trim();
+        //     if (!textVal && state.simUploads.length === 0) return;
+
+        //     const p = getActivePersona();
+        //     const msgObj = { sender: 'me', text: textVal || '【多模态附件内容】' };
+
+        //     state.simUploads.forEach(item => {
+        //         if (item.type === 'image') msgObj.image = item.url;
+        //         if (item.type === 'audio') msgObj.audio = item.url;
+        //         if (item.type === 'file') msgObj.file = item.name;
+        //     });
+
+        //     p.chatHistory.push(msgObj);
+        //     input.value = '';
+        //     state.simUploads = [];
+        //     renderSimAttachmentsArea();
+        //     renderSimulatorView();
+
+        //     setTimeout(() => {
+        //         let aiReplies = [
+        //             `哈哈，收到你发的内容啦！感觉你说得挺有意思的。`,
+        //             `嗯嗯... 我感觉我们可以进一步聊聊这个！`,
+        //             `真的假的？那你下次可得带我一起感受一下！`,
+        //             `哈哈，你这个人太细腻有趣了吧。`
+        //         ];
+        //         let reply = aiReplies[Math.floor(Math.random() * aiReplies.length)];
+        //         p.chatHistory.push({ sender: 'other', text: reply });
+        //         renderSimulatorView();
+        //     }, 900);
+        // }
 
         function renderSimulatorSuggestions() {
             const suggestions = [
@@ -1918,58 +2177,58 @@
         }
 
         async function saveNewPersona() {
-                const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
-                const status = document.getElementById('newPersonaStatus').value;
-                const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
-                const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
+            const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
+            const status = document.getElementById('newPersonaStatus').value;
+            const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
+            const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
 
-                // 处理附件
-                const attachments = state.modalUploads.map(item => ({
-                    name: item.name,
-                    type: item.type,
-                    data: item.data || item.url,
-                }));
+            // 处理附件
+            const attachments = state.modalUploads.map(item => ({
+                name: item.name,
+                type: item.type,
+                data: item.data || item.url,
+            }));
 
-                const newPersonaData = {
-                    name,
-                    status,
-                    mbti,
-                    personalityDesc: desc,
-                    attachments,
-                    tags: ['最新导入', '多模态AI提取'],
-                    heatScore: 50,
-                    defensiveLevel: 50,
-                    timeline: [{
-                        date: new Date().toISOString().slice(0, 10),
-                        title: '多模态档案建立',
-                        desc: '导入聊天记录与附件解析生成。',
-                        tag: '档案生成'
-                    }],
-                    chatHistory: [{ sender: 'other', text: '你好呀！' }],
-                    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150'
-                };
+            const newPersonaData = {
+                name,
+                status,
+                mbti,
+                personalityDesc: desc,
+                attachments,
+                tags: ['最新导入', '多模态AI提取'],
+                heatScore: 50,
+                defensiveLevel: 50,
+                timeline: [{
+                    date: new Date().toISOString().slice(0, 10),
+                    title: '多模态档案建立',
+                    desc: '导入聊天记录与附件解析生成。',
+                    tag: '档案生成'
+                }],
+                chatHistory: [{ sender: 'other', text: '你好呀！' }],
+                avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150'
+            };
 
-                try {
-                    const response = await fetch('/persona', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newPersonaData)
-                    });
-                    if (!response.ok) throw new Error('保存失败');
-                    const result = await response.json();
-                    const createdPersona = result.persona;
-                    // 更新本地状态
-                    state.personas.unshift(createdPersona);
-                    state.activePersonaId = createdPersona.id;
-                    // 重置并关闭模态框
-                    closeCreatePersonaModal();  // 内部会清空表单和文件
-                    // 刷新UI
-                    renderHeaderSelect();
-                    changeActivePersona(createdPersona.id);
-                } catch (error) {
-                    alert('保存失败: ' + error.message);
-                }
+            try {
+                const response = await fetch('/persona', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newPersonaData)
+                });
+                if (!response.ok) throw new Error('保存失败');
+                const result = await response.json();
+                const createdPersona = result.persona;
+                // 更新本地状态
+                state.personas.unshift(createdPersona);
+                state.activePersonaId = createdPersona.id;
+                // 重置并关闭模态框
+                closeCreatePersonaModal();  // 内部会清空表单和文件
+                // 刷新UI
+                renderHeaderSelect();
+                changeActivePersona(createdPersona.id);
+            } catch (error) {
+                alert('保存失败: ' + error.message);
             }
+        }
 
         function triggerEmergencyKit() { document.getElementById('emergencyModal').classList.remove('hidden'); }
         function closeEmergencyModal() { document.getElementById('emergencyModal').classList.add('hidden'); }
