@@ -1037,27 +1037,28 @@
             }
         }
 
+        // 新增函数：从后端加载关系人
         async function loadPersonas() {
             try {
-                const response = await fetch('/selfie');
-                if (!response.ok) throw new Error('网络请求失败');
+                const response = await fetch('/persona');
+                if (!response.ok) throw new Error('加载关系人失败');
                 const data = await response.json();
-                if (data.status === 'success' && data.profile) {
-                    // 更新 state
-                    state.userProfile = data.profile;
-                    // 同步更新 UI 中的表单（如果弹窗已打开）
-                    const nameInput = document.getElementById('userProfileName');
-                    const mbtiInput = document.getElementById('userProfileMbti');
-                    const strengthsInput = document.getElementById('userProfileStrengths');
-                    const weaknessesInput = document.getElementById('userProfileWeaknesses');
-                    if (nameInput) nameInput.value = data.profile.name || '我';
-                    if (mbtiInput) mbtiInput.value = data.profile.mbti || '';
-                    if (strengthsInput) strengthsInput.value = data.profile.strengths || '';
-                    if (weaknessesInput) weaknessesInput.value = data.profile.weaknesses || '';
+                if (data.personas && data.personas.length > 0) {
+                    state.personas = data.personas;
+                } else {
+                    // 如果没有数据，可以保留默认或提示
+                    // 也可以设置默认示例（可选）
                 }
+                // 重新渲染所有视图
+                renderHeaderSelect();
+                renderPersonasView();
+                renderActivePersonaDetails();
+                if (state.activeTab === 'simulator') renderSimulatorView();
+                if (state.activeTab === 'decision') renderDecisionView();
+                if (state.activeTab === 'timeline') renderTimelineView();
             } catch (error) {
-                console.warn('加载用户档案失败，使用默认值', error);
-                // 保留默认的 state.userProfile（已在代码中定义）
+                console.error('加载关系人失败:', error);
+                // 可以回退到默认数据（如果需要）
             }
         }
 
@@ -1916,44 +1917,59 @@
             document.getElementById('modalFileInput').value = '';
         }
 
-        function saveNewPersona() {
-            const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
-            const status = document.getElementById('newPersonaStatus').value;
-            const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
-            const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
-            // 构建附件数组（仅保留可用的信息）
-            const attachments = state.modalUploads.map(item => ({
-                name: item.name,
-                type: item.type,
-                data: item.data || item.url,   // 文本内容或 DataURL
-            }));
+        async function saveNewPersona() {
+                const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
+                const status = document.getElementById('newPersonaStatus').value;
+                const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
+                const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
 
-            const newP = {
-                id: 'p_' + Date.now(),
-                name,
-                avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
-                status,
-                mbti,
-                tags: ['最新导入', '多模态AI提取'],
-                personalityDesc: desc,
-                heatScore: 50,
-                defensiveLevel: 50,
-                timeline: [{ date: '2026-08-04', title: '多模态档案建立', desc: '导入聊天记录与附件解析生成。', tag: '档案生成' }],
-                chatHistory: [{ sender: 'other', text: '你好呀！' }],
-                attachments: attachments   // 新增字段存储上传的文件
-            };
+                // 处理附件
+                const attachments = state.modalUploads.map(item => ({
+                    name: item.name,
+                    type: item.type,
+                    data: item.data || item.url,
+                }));
 
-            state.personas.unshift(newP);
-            state.activePersonaId = newP.id;
-            renderHeaderSelect();
-            closeCreatePersonaModal();
-            changeActivePersona(newP.id);
+                const newPersonaData = {
+                    name,
+                    status,
+                    mbti,
+                    personalityDesc: desc,
+                    attachments,
+                    tags: ['最新导入', '多模态AI提取'],
+                    heatScore: 50,
+                    defensiveLevel: 50,
+                    timeline: [{
+                        date: new Date().toISOString().slice(0, 10),
+                        title: '多模态档案建立',
+                        desc: '导入聊天记录与附件解析生成。',
+                        tag: '档案生成'
+                    }],
+                    chatHistory: [{ sender: 'other', text: '你好呀！' }],
+                    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150'
+                };
 
-            // 清空已上传文件
-            state.modalUploads = [];
-            renderModalUploadList();
-            document.getElementById('modalFileLabel').innerText = '点击或拖拽上传多个文件';
-        }
+                try {
+                    const response = await fetch('/persona', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newPersonaData)
+                    });
+                    if (!response.ok) throw new Error('保存失败');
+                    const result = await response.json();
+                    const createdPersona = result.persona;
+                    // 更新本地状态
+                    state.personas.unshift(createdPersona);
+                    state.activePersonaId = createdPersona.id;
+                    // 重置并关闭模态框
+                    closeCreatePersonaModal();  // 内部会清空表单和文件
+                    // 刷新UI
+                    renderHeaderSelect();
+                    changeActivePersona(createdPersona.id);
+                } catch (error) {
+                    alert('保存失败: ' + error.message);
+                }
+            }
 
         function triggerEmergencyKit() { document.getElementById('emergencyModal').classList.remove('hidden'); }
         function closeEmergencyModal() { document.getElementById('emergencyModal').classList.add('hidden'); }

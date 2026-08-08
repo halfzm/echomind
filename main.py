@@ -1,18 +1,36 @@
+import os
 import json
+import uuid
+import base64
+import shutil
 import asyncio
 from pathlib import Path
+from typing import List, Optional, Dict, Any
 
 import websockets
 from pydantic import BaseModel
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    WebSocketDisconnect,
+    HTTPException,
+    UploadFile,
+    File,
+    Form,
+)
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from models import SelfieRequest, TimelineItem, ChatMessage, Attachment, Persona
 from skill_loader import load_skill_instructions
 from simp_skill import SimpSkill, DATA_DIR
+from utils import load_personas_from_file, save_personas_to_file
 
 app = FastAPI()
 skill = SimpSkill()
+
+os.makedirs("relations", exist_ok=True)
+PERSONAS_FILE = "relations/personas.json"
 
 # MiniCPM-o API 地址
 API_HOST = "minicpmo45.modelbest.cn"
@@ -24,13 +42,6 @@ API_WS_URL = f"wss://{API_HOST}/v1/realtime?mode=chat"
 
 # 挂载静态文件目录，URL 前缀为 /static
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-class SelfieRequest(BaseModel):
-    name: str
-    mbti: str
-    strengths: str
-    weaknesses: str
 
 
 @app.get("/")
@@ -91,33 +102,100 @@ async def create_profile(requests: SelfieRequest):
 @app.get("/persona")
 async def get_persona():
     """加载所有已创建的 persona，返回给前端"""
-    pass
+    personas = load_personas_from_file(PERSONAS_FILE)
+    return {"personas": personas}
 
 
 @app.post("/persona")
-async def create_persona(requests):
-    """根据填写的表单，解析聊天记录，创建个性化的 persona，调用解析聊天记录的函数"""
-    """根据填写的表单，创建用户资料"""
-    try:
-        # 解析请求数据
-        name = requests.name
-        mbti = requests.mbti
-        relation_stage = requests.strengths
-        description = requests.description
-        chats = requests.chats
+async def create_persona(persona_data: Dict[str, Any]):
+    # 读取现有数据
+    personas = load_personas_from_file(PERSONAS_FILE)
 
-        # 调用 skill 创建个人档案
-        persona = skill.create(
-            name=name,
-            mbti=mbti,
-            relation_stage=relation_stage,
-            description=description,
-            chats=chats,
-        )
-        print(f"已创建关系人档案: {persona.name} (slug: {persona.slug})")
-        return {"status": "success", "profile": persona}
-    except Exception as e:
-        return {"error": str(e)}
+    name = persona_data.get("name", "新关系人")
+    mbti = persona_data.get("mbti", "ENFJ")
+    status = persona_data.get("status", "暗恋中")
+    desc = persona_data.get("personalityDesc", "")
+
+    persona = skill.create(
+        name=name, mbti=mbti, relation_stage=status, description=desc
+    )
+    persona_fp = DATA_DIR / f"{persona.slug}/memories"
+
+    new_id = "p_" + str(uuid.uuid4())[:8]
+
+    # 处理附件：将内容保存为文件，替换 data 为文件名
+    attachments = persona_data.get("attachments", [])
+    processed_attachments = []
+    for att in attachments:
+        # 原始文件名和类型
+        orig_name = att.get("name", "unknown")
+        att_type = att.get("type", "file")
+        content = att.get("data", "")
+
+        # 生成唯一文件名（保留原扩展名）
+        ext = os.path.splitext(orig_name)[1]
+        if not ext:
+            # 根据类型补默认扩展名
+            if att_type == "image":
+                ext = ".jpg"
+            elif att_type == "audio":
+                ext = ".wav"
+            else:
+                ext = ".txt"
+        filename = f"{uuid.uuid4().hex}{ext}"
+        filepath = os.path.join(persona_fp, filename)
+
+        # 根据内容类型写入文件
+        if att_type in ("image", "audio"):
+            # 内容为 DataURL，例如 "data:image/png;base64,xxxx"
+            # 提取 Base64 数据并解码
+            if content.startswith("data:"):
+                header, encoded = content.split(",", 1)
+                if "base64" in header:
+                    binary_data = base64.b64decode(encoded)
+                else:
+                    # 非 base64（少见），直接编码
+                    binary_data = encoded.encode()
+            else:
+                # 可能是纯二进制内容（极端情况）
+                binary_data = content.encode()
+            with open(filepath, "wb") as f:
+                f.write(binary_data)
+        else:
+            # 文本类文件（txt, json, csv），content 为纯文本
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
+
+        # 替换 data 为文件名
+        processed_att = {
+            "name": orig_name,
+            "type": att_type,
+            "data": filename,  # 存储文件名
+        }
+        processed_attachments.append(processed_att)
+
+    # 更新 persona 数据中的 attachments
+    persona_data["attachments"] = processed_attachments
+
+    # 构建 Persona 对象（其余字段不变）
+    new_persona = Persona(
+        id=new_id,
+        name=persona_data.get("name", "新关系人"),
+        avatar=persona_data.get("avatar", "默认头像 URL"),
+        status=persona_data.get("status", "暗恋中"),
+        mbti=persona_data.get("mbti", "ENFJ"),
+        tags=persona_data.get("tags", ["最新导入"]),
+        personalityDesc=persona_data.get("personalityDesc", ""),
+        heatScore=persona_data.get("heatScore", 50),
+        defensiveLevel=persona_data.get("defensiveLevel", 50),
+        timeline=persona_data.get("timeline", []),
+        chatHistory=persona_data.get("chatHistory", []),
+        attachments=persona_data.get("attachments", []),
+    )
+    # 追加到列表并保存
+    personas.append(new_persona.model_dump())
+    save_personas_to_file(personas, PERSONAS_FILE)
+    return {"persona": new_persona}
 
 
 @app.get("/search")
@@ -144,7 +222,7 @@ async def analysis(scenario="random"):
     pass
 
 
-@app.websocket("/ws")
+@app.websocket("/chat")
 async def websocket_proxy(websocket: WebSocket):
     """每次都新加入 system 指令，避免被覆盖"""
     await websocket.accept()

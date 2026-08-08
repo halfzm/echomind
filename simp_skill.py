@@ -58,6 +58,7 @@ def _ensure_crush_dir(slug: str) -> Path:
     """确保心上人目录存在"""
     path = _get_crush_dir(slug)
     path.mkdir(parents=True, exist_ok=True)
+    (path / "memories").mkdir(exist_ok=True)
     (path / "memories" / "chats").mkdir(exist_ok=True)
     (path / "memories" / "social").mkdir(exist_ok=True)
     (path / "memories" / "photos").mkdir(exist_ok=True)
@@ -71,7 +72,7 @@ def _ensure_crush_dir(slug: str) -> Path:
 # ============================================================
 
 
-def create(name, mbti, relation_stage, description, chats) -> CrushProfile:
+def create(name, mbti, relation_stage, description) -> CrushProfile:
     """
     建立心上人档案
     对应命令: /simp create <名字>
@@ -87,7 +88,7 @@ def create(name, mbti, relation_stage, description, chats) -> CrushProfile:
         CrushProfile: 创建的档案对象
 
     Example:
-        >>> profile = create("小美", mbti="ENFJ", relation_stage="认识期", description="部门新来的同事", chats=[])
+        >>> profile = create("小美", mbti="ENFJ", relation_stage="认识期", description="部门新来的同事")
     """
     slug = _generate_slug(name)
     path = _ensure_crush_dir(slug)
@@ -685,9 +686,9 @@ class SimpSkill:
         return sefie(name, mbti, pros, cons)
 
     def create(
-        self, name: str, tags: Optional[List[str]] = None, notes: str = ""
+        self, name: str, mbti: str, relation_stage: str, description: str
     ) -> CrushProfile:
-        return create(name, tags, notes)
+        return create(name, mbti, relation_stage, description)
 
     def analyze(self, slug: str, context: Optional[str] = None) -> AnalysisResult:
         return analyze(slug, context)
