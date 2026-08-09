@@ -1421,8 +1421,15 @@
             // System prompt
             // const systemPrompt = `每一句回答的后面加一个喵字`;
             // 获取当前场景
-            const scenarioSelect = document.getElementById('scenarioSelect');
-            const scenario = scenarioSelect ? scenarioSelect.value : 'free';
+            const type = state.simType;
+            let scenario;
+
+            if (type === 'free') {
+                scenario = 'free';
+            } else {
+                const scenarioSelect = document.getElementById('scenarioSelect');
+                scenario = scenarioSelect ? scenarioSelect.value : 'free';
+            }
 
             // 基础系统指令（包含关系人信息）
             let systemPrompt = `你正在扮演“${persona.name}”，${persona.status}关系对象。\n`;
