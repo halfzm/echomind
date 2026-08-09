@@ -245,6 +245,7 @@ async def websocket_proxy(websocket: WebSocket):
             while True:
                 msg = await websocket.receive_text()
                 data = json.loads(msg)
+                print(data) #探针--输出消息
 
                 # 拦截 input.append 事件，注入 system 消息
                 if data.get("type") == "input.append":

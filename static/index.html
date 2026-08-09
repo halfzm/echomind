@@ -252,7 +252,7 @@
                         class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
                         <i class="fa-solid fa-chart-radar text-xs"></i>
                     </div>
-                    <span class="hidden lg:inline font-semibold">决策台 (多模态)</span>
+                    <span class="hidden lg:inline font-semibold">决策台</span>
                 </button>
 
                 <button onclick="switchTab('timeline')" id="tab-btn-timeline"
@@ -341,11 +341,11 @@
                             <i class="fa-solid fa-gamepad text-xs"></i>
                             <span>陪练模式 (AI扮演对方)</span>
                         </button>
-                        <button id="modeAdvisor" onclick="setSimMode('advisor')"
+                        <!-- <button id="modeAdvisor" onclick="setSimMode('advisor')"
                             class="flex items-center space-x-1.5 px-3 py-1 rounded-lg text-stone-500 hover:text-stone-900">
                             <i class="fa-solid fa-brain text-xs"></i>
                             <span>军师模式 (AI侧边诊断)</span>
-                        </button>
+                        </button> -->
                     </div>
                 </div>
 
@@ -1419,11 +1419,35 @@
             const messages = [];
 
             // System prompt
-            // const systemPrompt = `你正在扮演“${persona.name}”，${persona.status}关系对象。
-            //     性格描述：${persona.personalityDesc}
-            //     MBTI：${persona.mbti}
-            //     请以第一人称自然回复，保持角色一致性。`;
-            const systemPrompt = `每一句回答的后面加一个喵字`;
+            // const systemPrompt = `每一句回答的后面加一个喵字`;
+            // 获取当前场景
+            const scenarioSelect = document.getElementById('scenarioSelect');
+            const scenario = scenarioSelect ? scenarioSelect.value : 'free';
+
+            // 基础系统指令（包含关系人信息）
+            let systemPrompt = `你正在扮演“${persona.name}”，${persona.status}关系对象。\n`;
+            systemPrompt += `性格描述：${persona.personalityDesc}\n`;
+            systemPrompt += `MBTI：${persona.mbti}\n`;
+
+            // 根据场景添加特定指导
+            switch (scenario) {
+                case 'icebreak':
+                    systemPrompt += `\n场景：首次破冰。你们刚刚认识不久，你（${persona.name}）对对方感到好奇但保持适度距离。你的回应应该友善、开放，但不要过于热情，保持自然。可以问一些轻松的问题来了解对方。`;
+                    break;
+                case 'invite':
+                    systemPrompt += `\n场景：周末邀约。对方邀请你周末一起看电影或喝咖啡。你（${persona.name}）根据你的性格和当前心情作出回应——可能接受、婉拒或提出改天。请自然地表达你的想法，不要显得太勉强。`;
+                    break;
+                case 'conflict':
+                    systemPrompt += `\n场景：化解冷战。你们之前有一些小矛盾或沟通不畅，现在对方主动联系你。你（${persona.name}）应该表现出愿意缓和关系、理解对方的态度，但也要保持你的真实感受。尝试修复关系，但不要过于急切。`;
+                    break;
+                case 'confess':
+                    systemPrompt += `\n场景：浪漫表白。对方向你表白心意。你（${persona.name}）的反应应符合你的性格和当前关系阶段——可能惊喜、犹豫、或温和地拒绝。请真诚回应，不要伤害对方但也要表达你的真实想法。`;
+                    break;
+                default:
+                    // 自由对话：无特殊场景
+                    systemPrompt += `\n请以第一人称自然回复，保持角色一致性。`;
+            }
+
             messages.push({ role: 'system', content: systemPrompt });
 
             // 历史消息（排除占位）
@@ -1599,39 +1623,6 @@
             }, 30000);
         }
 
-        // function sendSimMessage() {
-        //     const input = document.getElementById('simInput');
-        //     const textVal = input.value.trim();
-        //     if (!textVal && state.simUploads.length === 0) return;
-
-        //     const p = getActivePersona();
-        //     const msgObj = { sender: 'me', text: textVal || '【多模态附件内容】' };
-
-        //     state.simUploads.forEach(item => {
-        //         if (item.type === 'image') msgObj.image = item.url;
-        //         if (item.type === 'audio') msgObj.audio = item.url;
-        //         if (item.type === 'file') msgObj.file = item.name;
-        //     });
-
-        //     p.chatHistory.push(msgObj);
-        //     input.value = '';
-        //     state.simUploads = [];
-        //     renderSimAttachmentsArea();
-        //     renderSimulatorView();
-
-        //     setTimeout(() => {
-        //         let aiReplies = [
-        //             `哈哈，收到你发的内容啦！感觉你说得挺有意思的。`,
-        //             `嗯嗯... 我感觉我们可以进一步聊聊这个！`,
-        //             `真的假的？那你下次可得带我一起感受一下！`,
-        //             `哈哈，你这个人太细腻有趣了吧。`
-        //         ];
-        //         let reply = aiReplies[Math.floor(Math.random() * aiReplies.length)];
-        //         p.chatHistory.push({ sender: 'other', text: reply });
-        //         renderSimulatorView();
-        //     }, 900);
-        // }
-
         function renderSimulatorSuggestions() {
             const suggestions = [
                 "“看你朋友圈照片，感觉你对咖啡很有研究呀，有什么推荐的店吗？”",
@@ -1653,7 +1644,8 @@
 
         function resetSimChat() {
             const p = getActivePersona();
-            p.chatHistory = [{ sender: 'other', text: '嗨，最近在忙些什么呢？' }];
+            // p.chatHistory = [{ sender: 'other', text: '嗨，最近在忙些什么呢？' }];
+            p.chatHistory = [];
             renderSimulatorView();
         }
 
