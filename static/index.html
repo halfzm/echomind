@@ -346,6 +346,32 @@
                             <i class="fa-solid fa-brain text-xs"></i>
                             <span>军师模式 (AI侧边诊断)</span>
                         </button> -->
+                        <!-- 新增：TTS 语音回复 + 语音克隆上传 -->
+                        <div
+                            class="flex items-center space-x-3 bg-stone-100/80 px-3 py-1.5 rounded-xl border border-stone-200/60 text-xs">
+                            <div class="flex items-center space-x-2">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="simTtsToggle" onchange="toggleSimTts()"
+                                        class="sr-only peer">
+                                    <div
+                                        class="w-9 h-5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neutral-900">
+                                    </div>
+                                    <span class="ml-2 text-xs font-medium text-stone-700">语音回复</span>
+                                </label>
+                            </div>
+                            <div id="simTtsRefWrap"
+                                class="hidden flex items-center space-x-2 border-l border-stone-300 pl-3">
+                                <span class="text-stone-500">克隆音色:</span>
+                                <button onclick="document.getElementById('simTtsRefInput').click()"
+                                    class="px-2 py-1 bg-white hover:bg-stone-50 text-stone-700 rounded-lg border border-stone-200 shadow-sm transition text-[11px]">
+                                    <i class="fa-solid fa-upload text-[10px]"></i> 上传音频
+                                </button>
+                                <input type="file" id="simTtsRefInput" accept="audio/*" class="hidden"
+                                    onchange="handleSimTtsRefUpload(event)">
+                                <span id="simTtsRefName"
+                                    class="text-[10px] text-stone-500 max-w-[80px] truncate"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -945,6 +971,12 @@
             modalUpload: null,
             modalUploads: [],   // 存储上传的文件信息 { name, type, dataURL/content, file }
 
+            // 模拟舱 TTS 语音回复 & 语音克隆
+            simTtsEnabled: false,
+            simTtsRefAudio: null,      // 参考音频 base64
+            simTtsRefAudioName: '',
+            simAudioChunks: [],        // 流式音频累积缓冲区
+
             // Audio Recording State
             recordingState: {
                 isRecording: false,
@@ -1307,8 +1339,9 @@
                         mediaHtml += `<div class="mt-2"><img src="${m.image}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition" onclick="window.open(this.src,'_blank')"></div>`;
                     }
                     if (m.audio) {
-                        // 如果 m.audio 是 data URL 或普通 URL，直接使用
-                        mediaHtml += `<div class="mt-2"><audio controls src="${m.audio}" class="w-full max-w-[200px]"></audio></div>`;
+                        const autoPlay = m._autoPlay ? 'autoplay' : '';
+                        mediaHtml += `<div class="mt-2"><audio controls ${autoPlay} src="${m.audio}" class="w-full max-w-[200px]"></audio></div>`;
+                        delete m._autoPlay; // 只自动播放一次
                     }
                     if (m.file) {
                         mediaHtml += `<div class="mt-2 text-[11px] text-stone-700 bg-stone-100 px-2 py-1 rounded border border-stone-200 flex items-center gap-1"><i class="fa-solid fa-file"></i> <span>${m.file}</span></div>`;
@@ -1382,20 +1415,23 @@
                         items.push({ type: 'image', data: base64, name: att.name || 'image' });
                     }
                 } else if (att.type === 'audio' && att.url) {
-                    // 对于录音，需要转换为 16kHz WAV（此处简化，若已为 base64 则可直接使用）
-                    // 但 att.url 可能是 blob URL，需要转换。此处假设已存储为 base64（若没有，需转换）
-                    // 实际可参考 turnbased 中的 convertToWav16k
-                    let audioData = att.url;
-                    if (audioData.startsWith('blob:')) {
-                        // 需从 blob 读取并转换，这里简化，直接跳过
-                        // 实际应使用 fetch(blobUrl) 然后转换
-                        continue;
+                    let source = null;
+                    if (att.url.startsWith('blob:') || att.url.startsWith('data:')) {
+                        try {
+                            const resp = await fetch(att.url);
+                            source = await resp.blob();
+                        } catch (e) {
+                            console.warn('Failed to fetch audio blob:', e);
+                            continue;
+                        }
                     }
-                    // 如果已经是 data URL，提取 base64
-                    if (audioData.startsWith('data:')) {
-                        const base64 = audioData.split(',')[1];
-                        if (base64) {
+                    if (source) {
+                        try {
+                            const base64 = await convertToWav16k(source);
                             items.push({ type: 'audio', data: base64, name: att.name || 'audio', duration: 0 });
+                        } catch (e) {
+                            console.warn('Audio conversion failed:', e);
+                            continue;
                         }
                     }
                 }
@@ -1485,14 +1521,13 @@
 
             // 1. 构建 content list 和显示信息
             const { content, displayText, audioAttachments } = await buildSimContentFromInput(textVal, state.simUploads);
-            // 如果没有任何有效内容，直接返回
             if (!content || content.length === 0) return;
 
-            // 2. 保存用户消息（存储 content 列表）
+            // 2. 保存用户消息
             const msgObj = {
                 sender: 'me',
-                content: content,           // 用于发送和存储
-                displayText: displayText,   // 显示用
+                content: content,
+                displayText: displayText,
                 audioAttachments: audioAttachments,
             };
             p.chatHistory.push(msgObj);
@@ -1513,13 +1548,13 @@
             const sendBtn = document.querySelector('#simulator .btn-send');
             if (sendBtn) sendBtn.disabled = true;
 
-            // 6. 构建请求体（与 turnbased 的 _buildChatWSBody 类似）（包含 history，使用 content 列表）
+            // 6. 构建请求体
             const messages = buildSimRequestMessages(p);
 
             // 7. 构建 WebSocket 请求体
             const wsBody = {
                 messages,
-                streaming: true,  // 流式输出，可改为 false
+                streaming: true,
                 generation: {
                     max_new_tokens: 256,
                     do_sample: true,
@@ -1527,8 +1562,16 @@
                 },
                 image: { max_slice_nums: 1 },
                 omni_mode: false,
-                // 不使用 TTS
             };
+
+            if (state.simTtsEnabled) {
+                wsBody.tts = { enabled: true, mode: 'audio_assistant' };
+                wsBody.use_tts_template = true;
+                if (state.simTtsRefAudio) {
+                    wsBody.tts.ref_audio_data = state.simTtsRefAudio;
+                }
+                state.simAudioChunks = [];
+            }
 
             // 8. 建立 WebSocket
             const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -1538,6 +1581,8 @@
             let inputSent = false;
             let closeSent = false;
             let fullReply = '';
+            let finished = false;   // 防重入标记
+            let timeoutId = null;   // 超时器句柄
 
             const sendInit = () => {
                 if (initSent || ws.readyState !== WebSocket.OPEN) return;
@@ -1558,11 +1603,24 @@
             };
 
             const finish = (errorMsg = null) => {
+                if (finished) return;           // 防重入
+                finished = true;
+                if (timeoutId) clearTimeout(timeoutId); // 清理超时器
+
                 if (errorMsg) {
                     p.chatHistory[placeholderIndex].text = `⚠️ ${errorMsg}`;
+                    // 错误时清除可能残留的 audio，避免"超时却带语音条"的混乱 UI
+                    delete p.chatHistory[placeholderIndex].audio;
+                    delete p.chatHistory[placeholderIndex]._autoPlay;
                 } else {
                     p.chatHistory[placeholderIndex].text = fullReply || '(空回复)';
+                    if (state.simTtsEnabled && state.simAudioChunks.length > 0) {
+                        const mergedAudio = mergeAudioChunks(state.simAudioChunks);
+                        p.chatHistory[placeholderIndex].audio = 'data:audio/wav;base64,' + mergedAudio;
+                        p.chatHistory[placeholderIndex]._autoPlay = true;
+                    }
                 }
+                state.simAudioChunks = [];      // 无论成败都清空，防止污染下一条
                 renderSimulatorView();
                 simIsGenerating = false;
                 if (sendBtn) sendBtn.disabled = false;
@@ -1583,19 +1641,17 @@
                 } else if (msg.type === 'session.created') {
                     sendInput();
                 } else if (msg.type === 'response.output.delta') {
-                    // 更新回复文本
                     if (msg.kind === 'text' && msg.text) {
                         fullReply += msg.text;
                         p.chatHistory[placeholderIndex].text = fullReply;
                         renderSimulatorView();
+                    } else if (msg.kind === 'audio' && msg.audio) {
+                        state.simAudioChunks.push(msg.audio);
                     }
-                    // 可处理音频（此处忽略）
                 } else if (msg.type === 'response.done') {
-                    // 完成
                     sendClose();
                     finish();
                 } else if (msg.type === 'session.closed') {
-                    // 服务端主动关闭，检查是否正常
                     const reason = msg.reason || '';
                     const diag = msg.diagnostic?.message || msg.error?.message || '';
                     if (reason && !['turn_done', 'client_closed'].includes(reason)) {
@@ -1615,19 +1671,18 @@
             };
 
             ws.onclose = () => {
-                // 如果还没 finish，确保清理
-                if (simIsGenerating) {
-                    if (!fullReply) finish('连接意外关闭');
-                    else finish();
+                if (!finished && simIsGenerating) {
+                    finish('连接意外关闭');
                 }
             };
 
-            // 超时保护（可选）
-            setTimeout(() => {
-                if (simIsGenerating) {
+            // 超时保护：开启 TTS 后后端生成语音较慢，延长至 60s
+            const timeoutMs = state.simTtsEnabled ? 60000 : 30000;
+            timeoutId = setTimeout(() => {
+                if (!finished && simIsGenerating) {
                     finish('请求超时');
                 }
-            }, 30000);
+            }, timeoutMs);
         }
 
         function renderSimulatorSuggestions() {
@@ -2257,6 +2312,120 @@
             if (!val.trim()) return;
             const found = state.personas.find(p => p.name.includes(val) || p.mbti.toLowerCase().includes(val.toLowerCase()));
             if (found) changeActivePersona(found.id);
+        }
+
+        // ========== 模拟舱 TTS 语音回复 & 语音克隆工具函数 ==========
+
+        function toggleSimTts() {
+            state.simTtsEnabled = document.getElementById('simTtsToggle').checked;
+            const wrap = document.getElementById('simTtsRefWrap');
+            if (state.simTtsEnabled) wrap.classList.remove('hidden');
+            else wrap.classList.add('hidden');
+        }
+
+        async function handleSimTtsRefUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                // 必须转为 16kHz float32 PCM base64，后端才能解析
+                const base64 = await convertToWav16k(file);
+                state.simTtsRefAudio = base64;
+                state.simTtsRefAudioName = file.name;
+                document.getElementById('simTtsRefName').textContent = file.name;
+            } catch (err) {
+                console.error('TTS ref audio upload failed:', err);
+                alert('音频转换失败，请上传有效的 MP3/WAV 文件');
+            }
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        /** 播放 base64 音频（优先按 WAV 解码，失败则按 24kHz float32 PCM 处理） */
+        function playSimAudio(base64Data, sampleRate = 24000) {
+            const raw = atob(base64Data);
+            const bytes = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioCtx.decodeAudioData(bytes.buffer.slice(0)).then(buffer => {
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start();
+            }).catch(() => {
+                const float32 = new Float32Array(bytes.buffer);
+                const buffer = audioCtx.createBuffer(1, float32.length, sampleRate);
+                buffer.getChannelData(0).set(float32);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start();
+            });
+        }
+
+        /** 合并流式音频 chunks（base64 float32 PCM → 合并为 WAV base64） */
+        function mergeAudioChunks(chunks) {
+            const float32Arrays = chunks.map(b64 => {
+                const binary = atob(b64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                return new Float32Array(bytes.buffer);
+            });
+            const totalLength = float32Arrays.reduce((sum, arr) => sum + arr.length, 0);
+            const merged = new Float32Array(totalLength);
+            let offset = 0;
+            for (const arr of float32Arrays) {
+                merged.set(arr, offset);
+                offset += arr.length;
+            }
+            const wavBytes = float32ToWavBytes(merged, 24000);
+            let binary = '';
+            for (let i = 0; i < wavBytes.length; i++) binary += String.fromCharCode(wavBytes[i]);
+            return btoa(binary);
+        }
+
+        /** Float32 PCM → WAV Uint8Array */
+        function float32ToWavBytes(float32, sampleRate) {
+            const int16 = new Int16Array(float32.length);
+            for (let i = 0; i < float32.length; i++) {
+                const s = Math.max(-1, Math.min(1, float32[i]));
+                int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            const buf = new ArrayBuffer(44 + int16.length * 2);
+            const v = new DataView(buf);
+            const ws = (off, str) => { for (let i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); };
+            ws(0, 'RIFF'); v.setUint32(4, 36 + int16.length * 2, true);
+            ws(8, 'WAVE'); ws(12, 'fmt ');
+            v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+            v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+            v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+            ws(36, 'data'); v.setUint32(40, int16.length * 2, true);
+            new Int16Array(buf, 44).set(int16);
+            return new Uint8Array(buf);
+        }
+        /**将音频文件（MP3/WAV/OGG 等）转换为 16kHz float32 PCM base64*/
+        async function convertToWav16k(blobOrFile) {
+            const arrayBuffer = await blobOrFile.arrayBuffer();
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+            const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * 16000), 16000);
+            const source = offlineCtx.createBufferSource();
+            source.buffer = decoded;
+            source.connect(offlineCtx.destination);
+            source.start();
+            const resampled = await offlineCtx.startRendering();
+            audioCtx.close();
+            const pcm = resampled.getChannelData(0);
+            const bytes = new Uint8Array(pcm.buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
         }
     </script>
 </body>
