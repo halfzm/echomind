@@ -958,12 +958,7 @@
             simType: 'free',     // 'free' | 'scenario'
 
             // User Self Profile Data Container
-            userProfile: {
-                name: '我',
-                mbti: 'ENFJ',
-                strengths: '善于同理与倾听，逻辑清晰，富有幽默感和洞察力',
-                weaknesses: '面对冷漠回复容易产生情绪内耗，边界感较弱，过于追求完美沟通'
-            },
+            userProfile: {},
 
             // Multimodal State Containers
             decisionUploads: [],
@@ -987,62 +982,7 @@
                 timerInterval: null
             },
 
-            personas: [
-                {
-                    id: 'p1',
-                    name: '林小A',
-                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-                    status: '暗恋中',
-                    mbti: 'ENFP',
-                    tags: ['艺术系女孩', '喜欢黑胶唱片', '夜猫子'],
-                    personalityDesc: '热情开朗但内心细腻，喜欢有幽默感和审美的人。最怕沉闷唠叨。',
-                    heatScore: 78,
-                    defensiveLevel: 25,
-                    timeline: [
-                        { date: '2026-07-20', title: '首次咖啡厅偶遇', desc: '在3/4咖啡馆因为同样点了平白咖啡而搭讪。', tag: '里程碑' },
-                        { date: '2026-07-28', title: '深夜聊音乐到2点', desc: '分享各自喜欢的摇滚乐队，互动热度极高。', tag: '高光时刻' },
-                        { date: '2026-08-02', title: '电影邀约被婉拒', desc: '对方表示这周加班较忙，建议改天。', tag: '波动复盘' }
-                    ],
-                    chatHistory: [
-                        { sender: 'other', text: '哈哈哈哈那张唱片我也超级喜欢！你居然也有搜集！' },
-                        { sender: 'me', text: '对啊，之前在二手市集淘到的，当时第一眼就爱上了。' }
-                    ]
-                },
-                {
-                    id: 'p2',
-                    name: '陆沉 (Crush)',
-                    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150',
-                    status: '追求中',
-                    mbti: 'INTJ',
-                    tags: ['架构师', '逻辑严密', '喜欢户外徒步'],
-                    personalityDesc: '外冷内热，重逻辑理智，对夸夸其谈反感，欣赏高效有深度的沟通。',
-                    heatScore: 62,
-                    defensiveLevel: 45,
-                    timeline: [
-                        { date: '2026-07-15', title: '项目合作认识', desc: '专业能力互补，建立初步联系。', tag: '里程碑' }
-                    ],
-                    chatHistory: [
-                        { sender: 'other', text: '这份方案的第三部分数据逻辑很清晰，做得不错。' }
-                    ]
-                },
-                {
-                    id: 'p3',
-                    name: '许安 (前任)',
-                    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=150',
-                    status: '已分手/前任',
-                    mbti: 'INFP',
-                    tags: ['摄影师', '情感丰富', '已归档'],
-                    personalityDesc: '感性敏感，回忆较多，建议保持安全社交边界。',
-                    heatScore: 20,
-                    defensiveLevel: 80,
-                    timeline: [
-                        { date: '2026-06-01', title: '和平分手', desc: '双方决定退回朋友关系。', tag: '结案' }
-                    ],
-                    chatHistory: [
-                        { sender: 'other', text: '祝你一切顺利吧。' }
-                    ]
-                }
-            ]
+            personas: []
         };
 
         async function loadUserProfile() {
@@ -1097,14 +1037,15 @@
         let chartInstance = null;
 
         window.onload = function () {
+            loadUserProfile();
+            loadPersonas();
             renderHeaderSelect();
             renderPersonasView();
             renderActivePersonaDetails();
             initHeatChart();
             setupDragAndDrop();
             switchTab('personas');
-            loadUserProfile();
-            loadPersonas();
+            
         };
 
         // User Profile Modal Control Functions
@@ -1829,27 +1770,73 @@
             }
         }
 
-        function renderTimelineView() {
-            const p = getActivePersona();
-            document.getElementById('timelinePersonaName').innerText = `关于：${p.name}`;
+        async function renderTimelineView() {
+                const p = getActivePersona();
+                const name = p.name;
+                const list = document.getElementById('timelineList');
+                // 显示加载中
+                list.innerHTML = `<div class="text-center text-stone-500 py-8 text-xs">加载中...</div>`;
 
-            const list = document.getElementById('timelineList');
-            list.innerHTML = p.timeline.map(item => `
-                <div class="relative">
-                    <div class="absolute -left-[41px] top-1 w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] ring-4 ring-white shadow-sm">
-                        <i class="fa-solid fa-star"></i>
-                    </div>
-                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-stone-900">${item.title}</span>
-                            <span class="text-[10px] text-stone-700 bg-stone-200 px-2 py-0.5 rounded font-medium">${item.tag}</span>
-                        </div>
-                        <p class="text-xs text-stone-600">${item.desc}</p>
-                        <span class="text-[10px] text-stone-400 block pt-1">${item.date}</span>
-                    </div>
+                try {
+                    const response = await fetch(`/timeline?name=${encodeURIComponent(name)}`);
+                    if (!response.ok) throw new Error('加载失败');
+                    const data = await response.json();
+                    const timelineRaw = data.timeline_data || [];
+
+                    // 解析 JSON 字符串并映射字段
+                    const timeline = timelineRaw.map(item => {
+                        if (typeof item === 'string') {
+                            try {
+                                const parsed = JSON.parse(item);
+                                return {
+                                    date: parsed.timestamp || parsed.date || '',
+                                    title: parsed.title || '',
+                                    desc: parsed.desc || '',
+                                    tag: parsed.tag || ''
+                                };
+                            } catch (e) {
+                                console.warn('解析时间轴条目失败:', item);
+                                return null;
+                            }
+                        } else {
+                            // 如果已经是对象，直接映射
+                            return {
+                                date: item.timestamp || item.date || '',
+                                title: item.title || '',
+                                desc: item.desc || '',
+                                tag: item.tag || ''
+                            };
+                        }
+                    }).filter(item => item !== null);
+
+                    // 更新标题
+                    document.getElementById('timelinePersonaName').innerText = `关于：${name}`;
+
+                    if (timeline.length === 0) {
+                        list.innerHTML = `<div class="text-center text-stone-500 py-8 text-xs">暂无时间轴记录</div>`;
+                        return;
+                    }
+
+                    list.innerHTML = timeline.map(item => `
+            <div class="relative">
+                <div class="absolute -left-[41px] top-1 w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] ring-4 ring-white shadow-sm">
+                    <i class="fa-solid fa-star"></i>
                 </div>
-            `).join('');
-        }
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-stone-900">${item.title}</span>
+                        <span class="text-[10px] text-stone-700 bg-stone-200 px-2 py-0.5 rounded font-medium">${item.tag}</span>
+                    </div>
+                    <p class="text-xs text-stone-600">${item.desc}</p>
+                    <span class="text-[10px] text-stone-400 block pt-1">${item.date}</span>
+                </div>
+            </div>
+        `).join('');
+                } catch (error) {
+                    console.error('加载时间轴失败:', error);
+                    list.innerHTML = `<div class="text-center text-rose-600 py-8 text-xs">加载失败，请稍后重试</div>`;
+                }
+            }
 
         function triggerFileInput(id) {
             document.getElementById(id).click();
