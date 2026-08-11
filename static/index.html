@@ -9,8 +9,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js for Decision Lab & Sentiment Analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -284,7 +282,8 @@
 
             <!-- SECTION 1: 【我的关系人】 -->
             <section id="view-personas" class="tab-view space-y-6">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div
+                    class="bg-white/90 border border-stone-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
                             <span>我的关系人</span>
@@ -294,7 +293,7 @@
                         <p class="text-xs text-stone-500 mt-1">管理AI人格对象库，可直接导入微信/QQ聊天记录、通话语音及截图构建人物档案。</p>
                     </div>
                     <button onclick="openCreatePersonaModal()"
-                        class="self-start md:self-auto flex items-center space-x-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold rounded-xl transition shadow-sm">
+                        class="self-start md:self-auto flex items-center space-x-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold rounded-xl transition shadow-sm shrink-0">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>添加关系人</span>
                     </button>
@@ -497,8 +496,9 @@
             </section>
 
             <!-- SECTION 3: 【决策台】 -->
-            <section id="view-decision" class="tab-view hidden space-y-6">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <section id="view-decision" class="tab-view hidden h-full flex flex-col space-y-4">
+                <div
+                    class="bg-white/90 border border-stone-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                     <div>
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
                             <span>决策台与战术局势</span>
@@ -510,21 +510,23 @@
                     </div>
 
                     <button onclick="triggerEmergencyKit()"
-                        class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition">
+                        class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center space-x-2 shadow-sm transition shrink-0">
                         <i class="fa-solid fa-kit-medical text-xs"></i>
                         <span>触发冷场/被拒绝【急救包】</span>
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                    <div class="lg:col-span-1 light-card p-5 rounded-2xl border border-stone-200 space-y-4 flex flex-col justify-between drag-zone"
+                <!-- 左右两栏布局，与模拟舱一致 -->
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+                    <!-- 左侧：上传区（占两列） -->
+                    <div class="lg:col-span-2 light-card rounded-2xl border border-stone-200 flex flex-col overflow-hidden relative drag-zone"
                         id="decisionDragZone">
                         <div class="drag-overlay">
                             <i class="fa-solid fa-file-arrow-up text-3xl mb-1"></i>
                             <span>拖拽聊天截图、语音或记录文件至此</span>
                         </div>
 
-                        <div class="space-y-3">
+                        <div class="p-4 flex-1 flex flex-col space-y-4">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-xs font-bold text-stone-900 flex items-center space-x-2">
                                     <i class="fa-solid fa-cloud-arrow-up text-stone-700"></i>
@@ -533,9 +535,9 @@
                                 <span class="text-[10px] text-stone-400">图片/音频/TXT/JSON</span>
                             </div>
 
-                            <textarea id="decisionChatInput" rows="5"
+                            <textarea id="decisionChatInput" rows="6"
                                 placeholder="可直接粘贴微信/QQ聊天文字记录，或点击下方按钮上传截图、语音与聊天导出的文本/文件..."
-                                class="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 placeholder-stone-400 resize-none transition"></textarea>
+                                class="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 placeholder-stone-400 resize-none transition flex-1"></textarea>
 
                             <div
                                 class="flex flex-wrap items-center justify-between gap-2 p-2 bg-stone-100/80 rounded-xl border border-stone-200/80">
@@ -581,81 +583,69 @@
                                 class="hidden" onchange="handleDecisionFileUpload(event, 'file')">
 
                             <div id="decisionUploadsList" class="space-y-2 max-h-36 overflow-y-auto pr-1"></div>
-                        </div>
 
-                        <button onclick="runDecisionAnalysis()"
-                            class="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-xl text-xs shadow-sm flex items-center justify-center space-x-2 transition active:scale-95">
-                            <i class="fa-solid fa-magnifying-glass-chart"></i>
-                            <span>深度解构聊天信号 (含截图与语音)</span>
-                        </button>
+                            <button onclick="runDecisionAnalysis()"
+                                class="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold rounded-xl text-xs shadow-sm flex items-center justify-center space-x-2 transition active:scale-95">
+                                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                                <span>深度解构聊天信号 (含截图与语音)</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <div
-                        class="lg:col-span-2 light-card p-5 rounded-2xl border border-stone-200 flex flex-col justify-between">
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-xs font-bold text-stone-900 flex items-center space-x-2">
-                                <i class="fa-solid fa-chart-line text-stone-700"></i>
-                                <span>互动热度趋势 & 阶段评估</span>
+                    <!-- 右侧：诊断 + 作战计划（占一列，上下排列） -->
+                    <div class="flex flex-col space-y-4 min-h-0">
+                        <!-- 潜台词诊断 -->
+                        <div class="light-card flex-1 p-4 rounded-2xl border border-stone-200 overflow-y-auto">
+                            <h3
+                                class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2 mb-3">
+                                <i class="fa-solid fa-user-ninja text-amber-600"></i>
+                                <span>潜台词诊断与潜意识心态</span>
                             </h3>
-                            <span
-                                class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">当前区位：暧昧拉扯期
-                                (安全)</span>
-                        </div>
-                        <div class="h-48 w-full relative">
-                            <canvas id="heatChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="light-card p-5 rounded-2xl border border-stone-200 space-y-4">
-                        <h3
-                            class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2">
-                            <i class="fa-solid fa-user-ninja text-amber-600"></i>
-                            <span>潜台词诊断与潜意识心态</span>
-                        </h3>
-                        <div class="space-y-3" id="subtextContainer">
-                            <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80">
-                                <div class="flex items-center justify-between text-xs mb-1">
-                                    <span class="font-bold text-stone-900">"还行吧 跟朋友一起去的"</span>
-                                    <span
-                                        class="text-[10px] text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded">防御度：中等</span>
+                            <div class="space-y-3" id="subtextContainer">
+                                <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80">
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="font-bold text-stone-900">"还行吧 跟朋友一起去的"</span>
+                                        <span
+                                            class="text-[10px] text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded">防御度：中等</span>
+                                    </div>
+                                    <p class="text-xs text-stone-600 leading-relaxed">
+                                        【潜台词】：“跟朋友”特意模糊了性别，属于保留边界感的自我保护机制。回复简短代表对方处于社交疲惫期，并非对你反感，切忌连续追问对方是和谁去的。
+                                    </p>
                                 </div>
-                                <p class="text-xs text-stone-600 leading-relaxed">
-                                    【潜台词】：“跟朋友”特意模糊了性别，属于保留边界感的自我保护机制。回复简短代表对方处于社交疲惫期，并非对你反感，切忌连续追问对方是和谁去的。</p>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="light-card p-5 rounded-2xl border border-stone-200 space-y-4">
-                        <h3
-                            class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2">
-                            <i class="fa-solid fa-flag-checkered text-stone-700"></i>
-                            <span>跨学科作战计划（3日推进策略）</span>
-                        </h3>
-                        <div class="space-y-2.5 text-xs" id="tacticalPlanBox">
-                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1">
-                                <div class="flex justify-between font-bold text-stone-900">
-                                    <span>Day 1: 情绪抽离与安全降温</span>
-                                    <span class="text-[10px] text-stone-500">策略：间歇性强化</span>
+                        <!-- 跨学科作战计划 -->
+                        <div class="light-card flex-1 p-4 rounded-2xl border border-stone-200 overflow-y-auto">
+                            <h3
+                                class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2 mb-3">
+                                <i class="fa-solid fa-flag-checkered text-stone-700"></i>
+                                <span>跨学科作战计划（3日推进策略）</span>
+                            </h3>
+                            <div class="space-y-2.5 text-xs" id="tacticalPlanBox">
+                                <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1">
+                                    <div class="flex justify-between font-bold text-stone-900">
+                                        <span>Day 1: 情绪抽离与安全降温</span>
+                                        <span class="text-[10px] text-stone-500">策略：间歇性强化</span>
+                                    </div>
+                                    <p class="text-stone-600">暂不继续该话题，回复一句“好滴，那你先忙~”即可。给对方留出心理回甘空间。</p>
                                 </div>
-                                <p class="text-stone-600">暂不继续该话题，回复一句“好滴，那你先忙~”即可。给对方留出心理回甘空间。</p>
-                            </div>
 
-                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-500 space-y-1">
-                                <div class="flex justify-between font-bold text-stone-900">
-                                    <span>Day 2: 朋友圈视觉锚点唤醒</span>
-                                    <span class="text-[10px] text-stone-500">策略：社交证明</span>
+                                <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-500 space-y-1">
+                                    <div class="flex justify-between font-bold text-stone-900">
+                                        <span>Day 2: 朋友圈视觉锚点唤醒</span>
+                                        <span class="text-[10px] text-stone-500">策略：社交证明</span>
+                                    </div>
+                                    <p class="text-stone-600">发布一张精致的美食或展览动态（结合对方MBTI爱好），触发对方的主动点赞与赞美。</p>
                                 </div>
-                                <p class="text-stone-600">发布一张精致的美食或展览动态（结合对方MBTI爱好），触发对方的主动点赞与赞美。</p>
-                            </div>
 
-                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-rose-500 space-y-1">
-                                <div class="flex justify-between font-bold text-stone-900">
-                                    <span>Day 3: 降维邀约尝试</span>
-                                    <span class="text-[10px] text-stone-500">策略：登门槛效应</span>
+                                <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-rose-500 space-y-1">
+                                    <div class="flex justify-between font-bold text-stone-900">
+                                        <span>Day 3: 降维邀约尝试</span>
+                                        <span class="text-[10px] text-stone-500">策略：登门槛效应</span>
+                                    </div>
+                                    <p class="text-stone-600">以“顺路顺便”为由发送轻量化邀约：“明天刚好在你公司附近办事，要不要顺便喝杯咖啡？”</p>
                                 </div>
-                                <p class="text-stone-600">以“顺路顺便”为由发送轻量化邀约：“明天刚好在你公司附近办事，要不要顺便喝杯咖啡？”</p>
                             </div>
                         </div>
                     </div>
@@ -664,7 +654,8 @@
 
             <!-- SECTION 4: 【时光轴】 -->
             <section id="view-timeline" class="tab-view hidden space-y-6">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div
+                    class="bg-white/90 border border-stone-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                     <div>
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
                             <span>时光轴与关系沉淀</span>
@@ -675,8 +666,7 @@
                         <p class="text-xs text-stone-500 mt-1">记录你们的重要里程碑、高光时刻、每日复盘与情感结案。</p>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <!-- 新增按钮：添加事件 -->
+                    <div class="flex items-center gap-2 shrink-0">
                         <button onclick="toggleAddTimelineForm()"
                             class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
                             <i class="fa-solid fa-plus text-xs"></i>
@@ -684,10 +674,10 @@
                         </button>
                         <!-- 原有归档按钮 -->
                         <!-- <button onclick="openFarewellModal()"
-                            class="px-4 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
-                            <i class="fa-solid fa-box-archive text-xs"></i>
-                            <span>选择“走出这段关系”/ 人格归档</span>
-                        </button> -->
+                                class="px-4 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+                                <i class="fa-solid fa-box-archive text-xs"></i>
+                                <span>选择“走出这段关系”/ 人格归档</span>
+                            </button> -->
                     </div>
                 </div>
 
@@ -1087,15 +1077,12 @@
             }
         }
 
-        let chartInstance = null;
-
         window.onload = function () {
             loadUserProfile();
             loadPersonas();
             renderHeaderSelect();
             renderPersonasView();
             renderActivePersonaDetails();
-            initHeatChart();
             setupDragAndDrop();
             switchTab('personas');
 
@@ -1842,35 +1829,6 @@
             renderDecisionUploadsList();
         }
 
-        function initHeatChart() {
-            const ctx = document.getElementById('heatChart').getContext('2d');
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-                    datasets: [{
-                        label: '互动情感热度值',
-                        data: [45, 52, 68, 60, 75, 82, 78],
-                        borderColor: '#1f1f1f',
-                        backgroundColor: 'rgba(31, 31, 31, 0.05)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointBackgroundColor: '#e11d48'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#737373', font: { size: 10 } } },
-                        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#737373', font: { size: 10 } } }
-                    }
-                }
-            });
-        }
-
         function runDecisionAnalysis() {
             const text = document.getElementById('decisionChatInput').value.trim();
             const uploadCount = state.decisionUploads.length;
@@ -1887,11 +1845,6 @@
                     <p class="text-xs text-stone-600 leading-relaxed">【视觉/语音潜台词】：解析图像与语音语调后，发现对方在结尾使用了上扬语调与衍生表情符号，表明心理防御层已降低，处于高粘性社交期。</p>
                 </div>
             `;
-
-            if (chartInstance) {
-                chartInstance.data.datasets[0].data = [50, 60, 72, 65, 80, 88, 92];
-                chartInstance.update();
-            }
         }
 
         async function renderTimelineView() {
