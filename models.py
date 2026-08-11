@@ -12,11 +12,11 @@ class SelfieRequest(BaseModel):
     weaknesses: str
 
 
-class TimelineItem(BaseModel):
-    date: str
-    title: str
-    desc: str
-    tag: str
+class TimelineEvent(BaseModel):
+    name: str          # 关系人姓名
+    title: str         # 事件标题
+    desc: Optional[str] = ""   # 详细信息，可选
+    data: Optional[str] = "里程碑"  # 标签，默认里程碑
 
 
 class ChatMessage(BaseModel):
@@ -43,6 +43,6 @@ class Persona(BaseModel):
     personalityDesc: str
     heatScore: int
     defensiveLevel: int
-    timeline: List[TimelineItem]
+    timeline: List[TimelineEvent]
     chatHistory: List[ChatMessage]
     attachments: Optional[List[Attachment]] = []

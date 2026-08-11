@@ -17,20 +17,21 @@ from fastapi import (
     UploadFile,
     File,
     Form,
+    Query,
 )
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from models import SelfieRequest, TimelineItem, ChatMessage, Attachment, Persona
-from skill_loader import load_skill_instructions
-from simp_skill import SimpSkill, DATA_DIR
+from echo_mind import EchoMind
 from utils import load_personas_from_file, save_personas_to_file
+from models import SelfieRequest, TimelineEvent, ChatMessage, Attachment, Persona
 
 app = FastAPI()
-skill = SimpSkill()
+skill = EchoMind()
 
-os.makedirs("relations", exist_ok=True)
-PERSONAS_FILE = "relations/personas.json"
+DATA_DIR = Path("./relations")
+DATA_DIR.mkdir(exist_ok=True)
+PERSONAS_FILE = os.path.join(DATA_DIR, "personas.json")
 
 # MiniCPM-o API 地址
 API_HOST = "minicpmo45.modelbest.cn"
@@ -116,10 +117,11 @@ async def create_persona(persona_data: Dict[str, Any]):
     status = persona_data.get("status", "暗恋中")
     desc = persona_data.get("personalityDesc", "")
 
-    persona = skill.create(
-        name=name, mbti=mbti, relation_stage=status, description=desc
-    )
+    # 创建档案
+    persona = skill.create(name=name, mbti=mbti, relation_stage=status, notes=desc)
     persona_fp = DATA_DIR / f"{persona.slug}/memories"
+
+    # TODO 创建之后自动的分析聊天记录，生成性格报告之类的
 
     new_id = "p_" + str(uuid.uuid4())[:8]
 
@@ -198,33 +200,9 @@ async def create_persona(persona_data: Dict[str, Any]):
     return {"persona": new_persona}
 
 
-@app.get("/search")
-async def search():
-    """根据关键词搜索相关的聊天信息"""
-    pass
-
-
-@app.get("/randomchat")
-async def random_chat():
-    """随机聊聊"""
-    pass
-
-
-@app.get("/scenariochat")
-async def scenario_chat(scenario="random"):
-    """场景聊天，根据场景加载不同的预设提示词"""
-    pass
-
-
-@app.get("/analysis")
-async def analysis(scenario="random"):
-    """分析聊天记录，生成统计数据和可视化图表"""
-    pass
-
-
 @app.websocket("/chat")
 async def websocket_proxy(websocket: WebSocket):
-    """每次都新加入 system 指令，避免被覆盖"""
+    """模拟聊天函数"""
     await websocket.accept()
 
     try:
@@ -245,7 +223,7 @@ async def websocket_proxy(websocket: WebSocket):
             while True:
                 msg = await websocket.receive_text()
                 data = json.loads(msg)
-                print(data) #探针--输出消息
+                print(data)  # 探针--输出消息
 
                 # 拦截 input.append 事件，注入 system 消息
                 if data.get("type") == "input.append":
@@ -280,12 +258,115 @@ async def websocket_proxy(websocket: WebSocket):
         # 清理连接
         try:
             await external_ws.close()
-        except:
-            pass
+        except Exception as e:
+            print(f"关闭代理 external_ws {e}")
         try:
             await websocket.close()
-        except:
+        except Exception as e:
+            print(f"关闭代理 websocket {e}")
+
+
+@app.websocket("/analyze")
+async def analyze_proxy(websocket: WebSocket):
+    """分析聊天记录，生成统计数据和可视化图表
+    统计数据、图标之类的是之前的档案中建立
+    只分析这一次上传的聊天记录，并给出策略什么的
+    """
+    await websocket.accept()
+
+    try:
+        # 连接外部 WebSocket
+        external_ws = await websockets.connect(API_WS_URL)
+    except Exception as e:
+        await websocket.send_text(
+            json.dumps(
+                {"type": "error", "message": f"Failed to connect to external API: {e}"}
+            )
+        )
+        await websocket.close()
+        return
+
+    async def forward_to_external():
+        """接收前端消息 -> 修改 -> 转发给外部 API"""
+        try:
+            while True:
+                msg = await websocket.receive_text()
+                data = json.loads(msg)
+                print(data)  # 探针--输出消息
+
+                # 拦截 input.append 事件，注入 system 消息
+                if data.get("type") == "input.append":
+                    input_data = data.get("input", {})
+                    messages = input_data.get("messages", [])
+                    if messages is not None:
+                        # 在最前面插入 system 消息
+                        # system_msg = {"role": "system", "content": SYSTEM_INSTRUCTION}
+                        # messages.insert(0, system_msg)
+                        input_data["messages"] = messages
+                        data["input"] = input_data
+
+                # 转发修改后的消息
+                await external_ws.send(json.dumps(data))
+        except (WebSocketDisconnect, websockets.ConnectionClosed):
             pass
+
+    async def forward_to_frontend():
+        """接收外部 API 消息 -> 转发给前端"""
+        try:
+            async for msg in external_ws:
+                await websocket.send_text(msg)
+        except (websockets.ConnectionClosed, WebSocketDisconnect):
+            pass
+
+    # 并发执行两个转发任务
+    try:
+        await asyncio.gather(forward_to_external(), forward_to_frontend())
+    except Exception as e:
+        print(f"代理异常: {e}")
+    finally:
+        # 清理连接
+        try:
+            await external_ws.close()
+        except Exception as e:
+            print(f"关闭代理 external_ws {e}")
+        try:
+            await websocket.close()
+        except Exception as e:
+            print(f"关闭代理 websocket {e}")
+
+
+@app.post("/analysis")
+async def analysis():
+    """分析聊天记录，生成统计数据和可视化图表
+    统计数据、图标之类的是之前的档案中建立
+    只分析这一次上传的聊天记录，并给出策略什么的
+    """
+    pass
+
+
+@app.get("/timeline")
+async def get_timeline(name: str = Query(..., description="传入的名字参数")):
+    """读取events.jsonl，返回到前端"""
+    timeline = skill.get_timeline(name)
+    return {"timeline_data": timeline}
+
+
+@app.post("/timeline")
+async def edit_timeline(event: TimelineEvent):
+    """向events.jsonl增加事件"""
+    try:
+        # 调用业务逻辑函数，将事件写入文件
+        # 注意：skill.edit_timeline 应接受 name, title, desc, data 四个参数
+        data = {"tag": event.data or "里程碑"}
+        skill.edit_timeline(
+            name=event.name,
+            title=event.title,
+            desc=event.desc or "",
+            data=data,
+        )
+        return {"status": "success", "message": "事件已记录"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"记录事件失败: {e}")
 
 
 if __name__ == "__main__":

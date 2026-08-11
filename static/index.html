@@ -674,16 +674,68 @@
                         </h2>
                         <p class="text-xs text-stone-500 mt-1">记录你们的重要里程碑、高光时刻、每日复盘与情感结案。</p>
                     </div>
-
-                    <button onclick="openFarewellModal()"
-                        class="px-4 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
-                        <i class="fa-solid fa-box-archive text-xs"></i>
-                        <span>选择“走出这段关系”/ 人格归档</span>
-                    </button>
+            
+                    <div class="flex items-center gap-2">
+                        <!-- 新增按钮：添加事件 -->
+                        <button onclick="toggleAddTimelineForm()"
+                            class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>添加事件</span>
+                        </button>
+                        <!-- 原有归档按钮 -->
+                        <button onclick="openFarewellModal()"
+                            class="px-4 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+                            <i class="fa-solid fa-box-archive text-xs"></i>
+                            <span>选择“走出这段关系”/ 人格归档</span>
+                        </button>
+                    </div>
                 </div>
-
+            
                 <div class="light-card p-6 rounded-2xl border border-stone-200 relative">
                     <div class="absolute left-8 top-8 bottom-8 w-0.5 bg-stone-200"></div>
+            
+                    <!-- 添加事件表单（默认隐藏） -->
+                    <!-- 添加事件表单（默认隐藏） -->
+                    <div id="addTimelineForm" class="hidden mb-6 pl-12">
+                        <div class="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-stone-900">📌 记录重要事件</span>
+                                <button onclick="toggleAddTimelineForm()" class="text-stone-400 hover:text-stone-700">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 gap-3">
+                                <div>
+                                    <label class="block text-stone-600 text-xs font-medium mb-1">事件标题 <span
+                                            class="text-rose-500">*</span></label>
+                                    <input type="text" id="timelineTitle" placeholder="例如：第一次约会、关系确认..."
+                                        class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-neutral-800">
+                                </div>
+                                <div>
+                                    <label class="block text-stone-600 text-xs font-medium mb-1">详细信息</label>
+                                    <textarea id="timelineDesc" rows="2" placeholder="描述事件经过、你的感受或收获..."
+                                        class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-neutral-800 resize-none"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-stone-600 text-xs font-medium mb-1">标签</label>
+                                    <input type="text" id="timelineTag" placeholder="里程碑" value="里程碑"
+                                        class="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:border-neutral-800">
+                                </div>
+                            </div>
+                            <div class="flex justify-end space-x-2 pt-2">
+                                <button onclick="toggleAddTimelineForm()"
+                                    class="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium transition">
+                                    取消
+                                </button>
+                                <button onclick="submitTimelineEvent()"
+                                    class="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg text-xs font-medium shadow-sm transition active:scale-95">
+                                    保存事件
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- 时间轴列表 -->
                     <div class="space-y-8 relative pl-12" id="timelineList"></div>
                 </div>
             </section>
@@ -991,7 +1043,7 @@
             initHeatChart();
             setupDragAndDrop();
             switchTab('personas');
-            
+
         };
 
         // User Profile Modal Control Functions
@@ -1717,53 +1769,53 @@
         }
 
         async function renderTimelineView() {
-                const p = getActivePersona();
-                const name = p.name;
-                const list = document.getElementById('timelineList');
-                // 显示加载中
-                list.innerHTML = `<div class="text-center text-stone-500 py-8 text-xs">加载中...</div>`;
+            const p = getActivePersona();
+            const name = p.name;
+            const list = document.getElementById('timelineList');
+            // 显示加载中
+            list.innerHTML = `<div class="text-center text-stone-500 py-8 text-xs">加载中...</div>`;
 
-                try {
-                    const response = await fetch(`/timeline?name=${encodeURIComponent(name)}`);
-                    if (!response.ok) throw new Error('加载失败');
-                    const data = await response.json();
-                    const timelineRaw = data.timeline_data || [];
+            try {
+                const response = await fetch(`/timeline?name=${encodeURIComponent(name)}`);
+                if (!response.ok) throw new Error('加载失败');
+                const data = await response.json();
+                const timelineRaw = data.timeline_data || [];
 
-                    // 解析 JSON 字符串并映射字段
-                    const timeline = timelineRaw.map(item => {
-                        if (typeof item === 'string') {
-                            try {
-                                const parsed = JSON.parse(item);
-                                return {
-                                    date: parsed.timestamp || parsed.date || '',
-                                    title: parsed.title || '',
-                                    desc: parsed.desc || '',
-                                    tag: parsed.tag || ''
-                                };
-                            } catch (e) {
-                                console.warn('解析时间轴条目失败:', item);
-                                return null;
-                            }
-                        } else {
-                            // 如果已经是对象，直接映射
+                // 解析 JSON 字符串并映射字段
+                const timeline = timelineRaw.map(item => {
+                    if (typeof item === 'string') {
+                        try {
+                            const parsed = JSON.parse(item);
                             return {
-                                date: item.timestamp || item.date || '',
-                                title: item.title || '',
-                                desc: item.desc || '',
-                                tag: item.tag || ''
+                                date: parsed.timestamp || parsed.date || '',
+                                title: parsed.title || '',
+                                desc: parsed.desc || '',
+                                tag: parsed.tag || ''
                             };
+                        } catch (e) {
+                            console.warn('解析时间轴条目失败:', item);
+                            return null;
                         }
-                    }).filter(item => item !== null);
-
-                    // 更新标题
-                    document.getElementById('timelinePersonaName').innerText = `关于：${name}`;
-
-                    if (timeline.length === 0) {
-                        list.innerHTML = `<div class="text-center text-stone-500 py-8 text-xs">暂无时间轴记录</div>`;
-                        return;
+                    } else {
+                        // 如果已经是对象，直接映射
+                        return {
+                            date: item.timestamp || item.date || '',
+                            title: item.title || '',
+                            desc: item.desc || '',
+                            tag: item.tag || ''
+                        };
                     }
+                }).filter(item => item !== null);
 
-                    list.innerHTML = timeline.map(item => `
+                // 更新标题
+                document.getElementById('timelinePersonaName').innerText = `关于：${name}`;
+
+                if (timeline.length === 0) {
+                    list.innerHTML = `<div class="text-center text-stone-500 py-8 text-xs">暂无时间轴记录</div>`;
+                    return;
+                }
+
+                list.innerHTML = timeline.map(item => `
             <div class="relative">
                 <div class="absolute -left-[41px] top-1 w-6 h-6 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] ring-4 ring-white shadow-sm">
                     <i class="fa-solid fa-star"></i>
@@ -1778,11 +1830,77 @@
                 </div>
             </div>
         `).join('');
-                } catch (error) {
-                    console.error('加载时间轴失败:', error);
-                    list.innerHTML = `<div class="text-center text-rose-600 py-8 text-xs">加载失败，请稍后重试</div>`;
-                }
+            } catch (error) {
+                console.error('加载时间轴失败:', error);
+                list.innerHTML = `<div class="text-center text-rose-600 py-8 text-xs">加载失败，请稍后重试</div>`;
             }
+        }
+
+        /**
+ * 切换添加事件表单的显示/隐藏
+ */
+        function toggleAddTimelineForm() {
+            const form = document.getElementById('addTimelineForm');
+            form.classList.toggle('hidden');
+            // 如果隐藏，可选择性清空表单（用户可能希望保留输入，这里不强制清空）
+        }
+
+        /**
+         * 提交新事件到后端
+         */
+        async function submitTimelineEvent() {
+            const title = document.getElementById('timelineTitle').value.trim();
+            const desc = document.getElementById('timelineDesc').value.trim();
+            const tag = document.getElementById('timelineTag').value.trim() || '里程碑';
+
+            if (!title) {
+                alert('请填写事件标题');
+                return;
+            }
+
+            const p = getActivePersona();
+            const name = p.name;  // 关系人姓名
+
+            const payload = {
+                name: name,
+                title: title,
+                desc: desc,
+                data: tag   // 标签字段
+            };
+
+            try {
+                const response = await fetch('/timeline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || '添加失败');
+                }
+
+                // 成功：隐藏表单、清空输入、刷新时间轴
+                document.getElementById('addTimelineForm').classList.add('hidden');
+                document.getElementById('timelineTitle').value = '';
+                document.getElementById('timelineDesc').value = '';
+                document.getElementById('timelineTag').value = '里程碑';
+
+                // 重新加载时间轴数据
+                await renderTimelineView();
+
+                // 可选轻提示（可省略）
+                // 简单用一个小提示，但不阻塞
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-xs px-4 py-2 rounded-xl shadow-lg z-50';
+                toast.innerText = '✅ 事件已记录';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+
+            } catch (error) {
+                alert('添加事件失败：' + error.message);
+            }
+        }
 
         function triggerFileInput(id) {
             document.getElementById(id).click();
