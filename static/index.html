@@ -683,11 +683,11 @@
                             <span>添加事件</span>
                         </button>
                         <!-- 原有归档按钮 -->
-                        <button onclick="openFarewellModal()"
+                        <!-- <button onclick="openFarewellModal()"
                             class="px-4 py-2 bg-white hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
                             <i class="fa-solid fa-box-archive text-xs"></i>
                             <span>选择“走出这段关系”/ 人格归档</span>
-                        </button>
+                        </button> -->
                     </div>
                 </div>
             
@@ -924,7 +924,7 @@
     </div>
 
     <!-- Modal 3: Farewell Archive Modal -->
-    <div id="farewellModal"
+    <!-- <div id="farewellModal"
         class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="light-card w-full max-w-md rounded-2xl border border-stone-200 p-6 space-y-4 text-center">
             <div
@@ -945,7 +945,7 @@
                     class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm">温柔封存归档</button>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <script>
         // Global Application Store
@@ -2337,10 +2337,10 @@
         function openFarewellModal() { document.getElementById('farewellModal').classList.remove('hidden'); }
         function closeFarewellModal() { document.getElementById('farewellModal').classList.add('hidden'); }
 
-        function archiveCurrentPersona() {
-            closeFarewellModal();
-            updatePersonaStatus(state.activePersonaId, '已分手/前任');
-        }
+        // function archiveCurrentPersona() {
+        //     closeFarewellModal();
+        //     updatePersonaStatus(state.activePersonaId, '已分手/前任');
+        // }
 
         function exportStudioData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
