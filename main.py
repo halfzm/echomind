@@ -109,35 +109,58 @@ async def get_persona():
 
 @app.post("/persona")
 async def create_persona(persona_data: Dict[str, Any]):
+    """
+    根据填写信息创建档案，如果有聊天记录则分析聊天记录
+    """
     # 读取现有数据
     personas = load_personas_from_file(PERSONAS_FILE)
 
+    # 提取新字段（全部）
     name = persona_data.get("name", "新关系人")
-    mbti = persona_data.get("mbti", "ENFJ")
+    gender = persona_data.get("gender", "")
+    age = persona_data.get("age", "")
+    occupation = persona_data.get("occupation", "")
+    city = persona_data.get("city", "")
+    mbti = persona_data.get("mbti", "未知")
+    personality_type = persona_data.get("personality_type", "感性型")
+    how_met = persona_data.get("how_met", "")
     status = persona_data.get("status", "暗恋中")
+    traits = persona_data.get("traits", "")
+    attraction_tips = persona_data.get("attraction_tips", "")
+    notes = persona_data.get("notes", "")
+    # 原有字段（兼容旧版）
     desc = persona_data.get("personalityDesc", "")
 
-    # 创建档案
-    persona = skill.create(name=name, mbti=mbti, relation_stage=status, notes=desc)
+    # 创建档案（此处调用 skill.create，可根据需要扩展参数）
+    # 我们传入 notes 合并了 traits + notes 或单独传，视 skill 实现决定
+    persona = skill.create(
+        name=name,
+        relation_stage=status,
+        gender=gender,
+        age=age,
+        occupation=occupation,
+        city=city,
+        mbti=mbti,
+        personality_type=personality_type,
+        how_met=how_met,
+        traits=traits,
+        attraction_tips=attraction_tips,
+        notes=notes or desc,  # 如果 notes 为空则使用 desc
+    )
+
     persona_fp = DATA_DIR / f"{persona.slug}/memories"
+    persona_fp.mkdir(parents=True, exist_ok=True)  # 确保目录存在
 
-    # TODO 创建之后自动的分析聊天记录，生成性格报告之类的
-
-    new_id = "p_" + str(uuid.uuid4())[:8]
-
-    # 处理附件：将内容保存为文件，替换 data 为文件名
+    # 处理附件（保持不变）
     attachments = persona_data.get("attachments", [])
     processed_attachments = []
     for att in attachments:
-        # 原始文件名和类型
         orig_name = att.get("name", "unknown")
         att_type = att.get("type", "file")
         content = att.get("data", "")
 
-        # 生成唯一文件名（保留原扩展名）
         ext = os.path.splitext(orig_name)[1]
         if not ext:
-            # 根据类型补默认扩展名
             if att_type == "image":
                 ext = ".jpg"
             elif att_type == "audio":
@@ -147,54 +170,55 @@ async def create_persona(persona_data: Dict[str, Any]):
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(persona_fp, filename)
 
-        # 根据内容类型写入文件
         if att_type in ("image", "audio"):
-            # 内容为 DataURL，例如 "data:image/png;base64,xxxx"
-            # 提取 Base64 数据并解码
             if content.startswith("data:"):
                 header, encoded = content.split(",", 1)
                 if "base64" in header:
                     binary_data = base64.b64decode(encoded)
                 else:
-                    # 非 base64（少见），直接编码
                     binary_data = encoded.encode()
             else:
-                # 可能是纯二进制内容（极端情况）
                 binary_data = content.encode()
             with open(filepath, "wb") as f:
                 f.write(binary_data)
         else:
-            # 文本类文件（txt, json, csv），content 为纯文本
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
 
-        # 替换 data 为文件名
-        processed_att = {
-            "name": orig_name,
-            "type": att_type,
-            "data": filename,  # 存储文件名
-        }
-        processed_attachments.append(processed_att)
+        processed_attachments.append(
+            {
+                "name": orig_name,
+                "type": att_type,
+                "data": filename,  # 存储文件名
+            }
+        )
 
-    # 更新 persona 数据中的 attachments
-    persona_data["attachments"] = processed_attachments
-
-    # 构建 Persona 对象（其余字段不变）
+    # 构建 Persona 对象（包含所有新字段）
+    new_id = "p_" + str(uuid.uuid4())[:8]
     new_persona = Persona(
         id=new_id,
-        name=persona_data.get("name", "新关系人"),
+        name=name,
         avatar=persona_data.get("avatar", "默认头像 URL"),
-        status=persona_data.get("status", "暗恋中"),
-        mbti=persona_data.get("mbti", "ENFJ"),
+        status=status,
+        gender=gender,
+        age=age,
+        occupation=occupation,
+        city=city,
+        mbti=mbti,
+        personality_type=personality_type,
+        how_met=how_met,
+        traits=traits,
+        attraction_tips=attraction_tips,
+        notes=notes,
+        personalityDesc=desc,  # 保留旧字段，可为空
         tags=persona_data.get("tags", ["最新导入"]),
-        personalityDesc=persona_data.get("personalityDesc", ""),
         heatScore=persona_data.get("heatScore", 50),
         defensiveLevel=persona_data.get("defensiveLevel", 50),
         timeline=persona_data.get("timeline", []),
         chatHistory=persona_data.get("chatHistory", []),
-        attachments=persona_data.get("attachments", []),
+        attachments=processed_attachments,
     )
-    # 追加到列表并保存
+
     personas.append(new_persona.model_dump())
     save_personas_to_file(personas, PERSONAS_FILE)
     return {"persona": new_persona}

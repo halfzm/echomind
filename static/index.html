@@ -289,7 +289,7 @@
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
                             <span>我的关系人</span>
                             <span class="text-xs bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full font-medium"
-                                id="personaCountBadge">3 位关系对象</span>
+                                id="personaCountBadge">0 位关系对象</span>
                         </h2>
                         <p class="text-xs text-stone-500 mt-1">管理AI人格对象库，可直接导入微信/QQ聊天记录、通话语音及截图构建人物档案。</p>
                     </div>
@@ -674,7 +674,7 @@
                         </h2>
                         <p class="text-xs text-stone-500 mt-1">记录你们的重要里程碑、高光时刻、每日复盘与情感结案。</p>
                     </div>
-            
+
                     <div class="flex items-center gap-2">
                         <!-- 新增按钮：添加事件 -->
                         <button onclick="toggleAddTimelineForm()"
@@ -690,10 +690,10 @@
                         </button> -->
                     </div>
                 </div>
-            
+
                 <div class="light-card p-6 rounded-2xl border border-stone-200 relative">
                     <div class="absolute left-8 top-8 bottom-8 w-0.5 bg-stone-200"></div>
-            
+
                     <!-- 添加事件表单（默认隐藏） -->
                     <!-- 添加事件表单（默认隐藏） -->
                     <div id="addTimelineForm" class="hidden mb-6 pl-12">
@@ -734,7 +734,7 @@
                             </div>
                         </div>
                     </div>
-            
+
                     <!-- 时间轴列表 -->
                     <div class="space-y-8 relative pl-12" id="timelineList"></div>
                 </div>
@@ -813,7 +813,7 @@
     <!-- Modal 1: Create Persona Modal -->
     <div id="createPersonaModal"
         class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="light-card w-full max-w-lg rounded-2xl border border-stone-200 p-6 space-y-4 relative drag-zone"
+        <div class="light-card w-full max-w-2xl rounded-2xl border border-stone-200 p-6 space-y-4 relative drag-zone"
             id="modalDragZone">
             <div class="drag-overlay">
                 <i class="fa-solid fa-file-import text-3xl mb-1"></i>
@@ -830,17 +830,61 @@
             </h3>
 
             <div class="space-y-3 text-xs">
+                <!-- 基础信息：两列 -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-stone-600 mb-1 font-medium">姓名/昵称</label>
-                        <input type="text" id="newPersonaName" placeholder="例如：林小A、陈Crush..."
+                        <label class="block text-stone-600 mb-1 font-medium">昵称 <span
+                                class="text-rose-500">*</span></label>
+                        <input type="text" id="newPersonaName" placeholder="例如：林小A"
                             class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
                     </div>
                     <div>
+                        <label class="block text-stone-600 mb-1 font-medium">性别</label>
+                        <select id="newPersonaGender"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                            <option value="">请选择</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-stone-600 mb-1 font-medium">年龄</label>
+                        <input type="text" id="newPersonaAge" placeholder="如：25"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                    </div>
+                    <div>
+                        <label class="block text-stone-600 mb-1 font-medium">职业</label>
+                        <input type="text" id="newPersonaOccupation" placeholder="如：设计师"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                    </div>
+                    <div>
+                        <label class="block text-stone-600 mb-1 font-medium">城市</label>
+                        <input type="text" id="newPersonaCity" placeholder="如：上海"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
                         <label class="block text-stone-600 mb-1 font-medium">MBTI类型</label>
-                        <input type="text" id="newPersonaMbti" placeholder="如: ENFP / INTJ"
+                        <input type="text" id="newPersonaMbti" placeholder="如: ENFP"
                             class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 uppercase">
                     </div>
+                    <div>
+                        <label class="block text-stone-600 mb-1 font-medium">性格类型</label>
+                        <input type="text" id="newPersonaPersonalityType" placeholder="感性型（默认）" value="感性型"
+                            class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-stone-600 mb-1 font-medium">认识途径</label>
+                    <input type="text" id="newPersonaHowMet" placeholder="如：朋友介绍、社交活动、工作场合"
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
                 </div>
 
                 <div>
@@ -855,11 +899,24 @@
                 </div>
 
                 <div>
-                    <label class="block text-stone-600 mb-1 font-medium">聊天描述或文本痕迹</label>
-                    <textarea id="newPersonaDesc" rows="3" placeholder="写下对方的性格特征，或直接在下方拖入/上传微信聊天记录、截图与语音文件..."
+                    <label class="block text-stone-600 mb-1 font-medium">性格画像</label>
+                    <textarea id="newPersonaTraits" rows="2" placeholder="描述对方的性格特征、行为模式..."
                         class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none"></textarea>
                 </div>
 
+                <div>
+                    <label class="block text-stone-600 mb-1 font-medium">最打动ta的方式</label>
+                    <textarea id="newPersonaAttractionTips" rows="2" placeholder="例如：细心观察他的需求、制造惊喜..."
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-stone-600 mb-1 font-medium">注意事项</label>
+                    <textarea id="newPersonaNotes" rows="2" placeholder="需避开的雷区、敏感话题等..."
+                        class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none"></textarea>
+                </div>
+
+                <!-- 文件上传部分保持不变 -->
                 <div>
                     <label class="block text-stone-600 mb-1 font-medium">上传关联图片截图/语音/记录文件 (.txt/.json/.jpg)</label>
                     <div class="flex items-center space-x-2">
@@ -868,11 +925,9 @@
                             <i class="fa-solid fa-cloud-arrow-up text-stone-700"></i>
                             <span id="modalFileLabel">点击或拖拽上传多个文件</span>
                         </button>
-                        <!-- 添加 multiple 属性 -->
                         <input type="file" id="modalFileInput" accept="image/*,audio/*,.txt,.json,.csv" multiple
                             class="hidden" onchange="handleModalFileUpload(event)">
                     </div>
-                    <!-- 动态文件预览列表 -->
                     <div id="modalUploadList" class="mt-2 space-y-2 max-h-36 overflow-y-auto"></div>
                 </div>
             </div>
@@ -2264,24 +2319,44 @@
         function openCreatePersonaModal() { document.getElementById('createPersonaModal').classList.remove('hidden'); }
         function closeCreatePersonaModal() {
             document.getElementById('createPersonaModal').classList.add('hidden');
-            // 重置表单
+            // 重置所有表单字段
             document.getElementById('newPersonaName').value = '';
+            document.getElementById('newPersonaGender').value = '';
+            document.getElementById('newPersonaAge').value = '';
+            document.getElementById('newPersonaOccupation').value = '';
+            document.getElementById('newPersonaCity').value = '';
             document.getElementById('newPersonaMbti').value = '';
-            document.getElementById('newPersonaStatus').value = '暗恋中'; // 默认选项
-            document.getElementById('newPersonaDesc').value = '';
+            document.getElementById('newPersonaPersonalityType').value = '感性型';
+            document.getElementById('newPersonaHowMet').value = '';
+            document.getElementById('newPersonaStatus').value = '暗恋中';
+            document.getElementById('newPersonaTraits').value = '';
+            document.getElementById('newPersonaAttractionTips').value = '';
+            document.getElementById('newPersonaNotes').value = '';
             // 清空上传的文件
             state.modalUploads = [];
             renderModalUploadList();
             document.getElementById('modalFileLabel').innerText = '点击或拖拽上传多个文件';
-            // 清空文件输入框（可选）
             document.getElementById('modalFileInput').value = '';
         }
 
         async function saveNewPersona() {
-            const name = document.getElementById('newPersonaName').value.trim() || '新关系人';
+            // 获取表单字段
+            const name = document.getElementById('newPersonaName').value.trim();
+            if (!name) {
+                alert('请填写昵称');
+                return;
+            }
+            const gender = document.getElementById('newPersonaGender').value;
+            const age = document.getElementById('newPersonaAge').value.trim();
+            const occupation = document.getElementById('newPersonaOccupation').value.trim();
+            const city = document.getElementById('newPersonaCity').value.trim();
+            const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || '未知';
+            const personalityType = document.getElementById('newPersonaPersonalityType').value.trim() || '感性型';
+            const howMet = document.getElementById('newPersonaHowMet').value.trim();
             const status = document.getElementById('newPersonaStatus').value;
-            const mbti = document.getElementById('newPersonaMbti').value.trim().toUpperCase() || 'ENFJ';
-            const desc = document.getElementById('newPersonaDesc').value.trim() || '暂无详细描述';
+            const traits = document.getElementById('newPersonaTraits').value.trim();
+            const attractionTips = document.getElementById('newPersonaAttractionTips').value.trim();
+            const notes = document.getElementById('newPersonaNotes').value.trim();
 
             // 处理附件
             const attachments = state.modalUploads.map(item => ({
@@ -2290,15 +2365,25 @@
                 data: item.data || item.url,
             }));
 
+            // 构造符合 CrushProfile 的数据对象
             const newPersonaData = {
                 name,
-                status,
+                gender,
+                age,
+                occupation,
+                city,
                 mbti,
-                personalityDesc: desc,
-                attachments,
+                personality_type: personalityType,
+                how_met: howMet,
+                status,                     // 关系阶段，额外字段
+                traits,
+                attraction_tips: attractionTips,
+                notes,
+                attachments,                // 保留多模态文件
+                // 以下为系统默认值，可根据需要调整
                 tags: ['最新导入', '多模态AI提取'],
-                heatScore: 50,
-                defensiveLevel: 50,
+                heatScore: 0,
+                defensiveLevel: 100,
                 timeline: [{
                     date: new Date().toISOString().slice(0, 10),
                     title: '多模态档案建立',
@@ -2318,12 +2403,9 @@
                 if (!response.ok) throw new Error('保存失败');
                 const result = await response.json();
                 const createdPersona = result.persona;
-                // 更新本地状态
                 state.personas.unshift(createdPersona);
                 state.activePersonaId = createdPersona.id;
-                // 重置并关闭模态框
                 closeCreatePersonaModal();  // 内部会清空表单和文件
-                // 刷新UI
                 renderHeaderSelect();
                 changeActivePersona(createdPersona.id);
             } catch (error) {
