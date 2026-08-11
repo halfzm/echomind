@@ -691,60 +691,6 @@
         </main>
     </div>
 
-    <!-- Global Floating AI Assistant: 【灵犀】 -->
-    <div class="fixed bottom-6 right-6 z-50">
-        <button id="lingxiBtn" onclick="toggleLingxiWindow()"
-            class="w-13 h-13 p-3.5 rounded-full bg-neutral-900 text-white flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all">
-            <i class="fa-solid fa-sparkles text-lg"></i>
-        </button>
-
-        <div id="lingxiWindow"
-            class="hidden absolute bottom-16 right-0 w-80 sm:w-96 h-[460px] light-card rounded-2xl shadow-2xl border border-stone-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
-            <div class="p-3.5 bg-stone-100 border-b border-stone-200 flex items-center justify-between">
-                <div class="flex items-center space-x-2.5">
-                    <div
-                        class="w-7 h-7 rounded-lg bg-neutral-900 flex items-center justify-center text-white text-xs font-bold">
-                        灵
-                    </div>
-                    <div>
-                        <h4 class="text-xs font-bold text-stone-900">灵犀 AI 全局军师</h4>
-                        <p class="text-[10px] text-stone-500">支持图文、语音诊断与情绪拆解</p>
-                    </div>
-                </div>
-                <button onclick="toggleLingxiWindow()" class="text-stone-400 hover:text-stone-700">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-
-            <div id="lingxiChatBox" class="flex-1 p-3 overflow-y-auto space-y-3 text-xs bg-[#fafaf7]">
-                <div class="bg-white border border-stone-200 p-3 rounded-xl text-stone-700 shadow-sm">
-                    你好！我是全局悬浮助手<b>灵犀</b>。我可以随时帮你做分析对话、生成高情商回复，或者带你去【决策台】上传截图诊断。
-                </div>
-            </div>
-
-            <div class="px-3 py-2 bg-stone-100/80 border-t border-stone-200 flex flex-wrap gap-1.5 text-[10px]">
-                <button onclick="quickLingxiQuery('帮我分析这段对话，他是不是讨厌我？')"
-                    class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 px-2 py-1 rounded-md transition shadow-sm">🧐
-                    分析对话意图</button>
-                <button onclick="quickLingxiQuery('生成一个能约她出来的高情商话术')"
-                    class="bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 px-2 py-1 rounded-md transition shadow-sm">🍷
-                    生成邀约话术</button>
-                <button onclick="switchTab('decision')"
-                    class="bg-neutral-900 text-white px-2 py-1 rounded-md transition shadow-sm">📸 去决策台传截图</button>
-            </div>
-
-            <div class="p-2.5 bg-white border-t border-stone-200 flex items-center gap-2">
-                <input type="text" id="lingxiInput" onkeypress="if(event.key==='Enter') sendLingxiMsg()"
-                    placeholder="向灵犀直接提问..."
-                    class="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800">
-                <button onclick="sendLingxiMsg()"
-                    class="w-8 h-8 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <i class="fa-solid fa-paper-plane text-xs"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- NEW MODAL: 个人档案 Modal -->
     <div id="userProfileModal"
         class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -2196,10 +2142,6 @@
             }, 600);
         }
 
-        function quickLingxiQuery(q) {
-            document.getElementById('lingxiInput').value = q;
-            sendLingxiMsg();
-        }
 
         function openCreatePersonaModal() { document.getElementById('createPersonaModal').classList.remove('hidden'); }
         function closeCreatePersonaModal() {
@@ -2293,12 +2235,6 @@
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
-        }
-
-        function handleGlobalSearch(val) {
-            if (!val.trim()) return;
-            const found = state.personas.find(p => p.name.includes(val) || p.mbti.toLowerCase().includes(val.toLowerCase()));
-            if (found) changeActivePersona(found.id);
         }
 
         // ========== 模拟舱 TTS 语音回复 & 语音克隆工具函数 ==========
