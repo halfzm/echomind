@@ -212,8 +212,8 @@ async def create_persona(persona_data: Dict[str, Any]):
         notes=notes,
         personalityDesc=desc,  # 保留旧字段，可为空
         tags=persona_data.get("tags", ["最新导入"]),
-        heatScore=persona_data.get("heatScore", 50),
-        defensiveLevel=persona_data.get("defensiveLevel", 50),
+        heatScore=persona_data.get("heatScore", 0),
+        defensiveLevel=persona_data.get("defensiveLevel", 100),
         timeline=persona_data.get("timeline", []),
         chatHistory=persona_data.get("chatHistory", []),
         attachments=processed_attachments,
@@ -222,6 +222,61 @@ async def create_persona(persona_data: Dict[str, Any]):
     personas.append(new_persona.model_dump())
     save_personas_to_file(personas, PERSONAS_FILE)
     return {"persona": new_persona}
+
+
+@app.put("/persona/{persona_id}")
+async def update_persona(persona_id: str, updated_data: Dict[str, Any]):
+    """更新指定ID的关系人信息"""
+    personas = load_personas_from_file(PERSONAS_FILE)
+
+    # 查找目标 persona
+    target_index = None
+    for idx, p in enumerate(personas):
+        if p.get("id") == persona_id:
+            target_index = idx
+            break
+
+    if target_index is None:
+        raise HTTPException(status_code=404, detail="Persona not found")
+
+    # 获取现有数据
+    existing = personas[target_index]
+
+    # 允许更新的字段列表（所有可编辑字段）
+    updatable_fields = [
+        "name",
+        "gender",
+        "age",
+        "occupation",
+        "city",
+        "mbti",
+        "personality_type",
+        "how_met",
+        "status",
+        "traits",
+        "attraction_tips",
+        "notes",
+        "avatar",
+        "tags",
+        "heatScore",
+        "defensiveLevel",
+        "timeline",
+        "chatHistory",
+    ]
+
+    # 更新字段
+    for field in updatable_fields:
+        if field in updated_data:
+            existing[field] = updated_data[field]
+
+    # 如果 personalityDesc 字段存在且未提供，可以保留旧值或忽略（此处保留）
+    # 也可以从 traits/notes 组合生成，但按需求暂不处理
+
+    # 保存回文件
+    save_personas_to_file(personas, PERSONAS_FILE)
+
+    # 返回更新后的 persona
+    return {"persona": existing}
 
 
 @app.websocket("/chat")

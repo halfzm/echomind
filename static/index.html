@@ -1250,18 +1250,58 @@
             const p = getActivePersona();
             const panel = document.getElementById('personaDetailPanel');
             panel.innerHTML = `
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-200 pb-4">
-                    <div class="flex items-center space-x-4">
-                        <img src="${p.avatar}" class="w-16 h-16 rounded-2xl object-cover ring-2 ring-stone-200 shadow-sm">
-                        <div>
-                            <h3 class="text-lg font-bold text-stone-900">${p.name} 的深度关系档案</h3>
-                            <p class="text-xs text-stone-500">已导入 ${p.chatHistory.length} 条对话与多模态记录分析</p>
-                        </div>
-                    </div>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-200 pb-4">
+            <div class="flex items-center space-x-4">
+                <img src="${p.avatar}" class="w-16 h-16 rounded-2xl object-cover ring-2 ring-stone-200 shadow-sm">
+                <div>
+                    <h3 class="text-lg font-bold text-stone-900 flex items-center gap-2">
+                        <span id="displayPersonaName">${p.name}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}" id="displayPersonaStatus">${p.status}</span>
+                    </h3>
+                    <p class="text-xs text-stone-500">已导入 ${p.chatHistory.length} 条对话与多模态记录分析</p>
+                </div>
+            </div>
+            <button onclick="toggleEditPersona()" id="editToggleBtn" 
+                    class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span id="editToggleText">编辑档案</span>
+            </button>
+        </div>
 
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs text-stone-500">切换标签:</span>
-                        <select onchange="updatePersonaStatus('${p.id}', this.value)" class="bg-stone-50 border border-stone-200 text-xs text-stone-800 font-medium px-3 py-1.5 rounded-xl focus:outline-none focus:border-neutral-800">
+        <!-- 展示/编辑区域 -->
+        <div id="personaDetailContent">
+            <!-- 由 renderPersonaDetailContent 填充 -->
+        </div>
+    `;
+            renderPersonaDetailContent(false); // false = 只读模式
+        }
+
+        function renderPersonaDetailContent(editMode) {
+            const p = getActivePersona();
+            const container = document.getElementById('personaDetailContent');
+            if (!container) return;
+
+            if (editMode) {
+                // 编辑模式：所有字段可编辑
+                container.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-2">
+                    <span class="text-stone-500 font-medium block">基本信息</span>
+                    <div><b>昵称：</b><input type="text" id="editName" value="${p.name}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
+                    <div><b>性别：</b>
+                        <select id="editGender" class="w-full bg-white border border-stone-200 rounded px-2 py-1">
+                            <option value="">请选择</option>
+                            <option value="男" ${p.gender === '男' ? 'selected' : ''}>男</option>
+                            <option value="女" ${p.gender === '女' ? 'selected' : ''}>女</option>
+                            <option value="其他" ${p.gender === '其他' ? 'selected' : ''}>其他</option>
+                        </select>
+                    </div>
+                    <div><b>年龄：</b><input type="text" id="editAge" value="${p.age || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
+                    <div><b>职业：</b><input type="text" id="editOccupation" value="${p.occupation || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
+                    <div><b>城市：</b><input type="text" id="editCity" value="${p.city || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
+                    <div><b>认识途径：</b><input type="text" id="editHowMet" value="${p.how_met || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
+                    <div><b>关系阶段：</b>
+                        <select id="editStatus" class="w-full bg-white border border-stone-200 rounded px-2 py-1">
                             <option value="暗恋中" ${p.status === '暗恋中' ? 'selected' : ''}>暗恋中</option>
                             <option value="追求中" ${p.status === '追求中' ? 'selected' : ''}>追求中</option>
                             <option value="交往中" ${p.status === '交往中' ? 'selected' : ''}>交往中</option>
@@ -1270,32 +1310,63 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80">
-                        <span class="text-stone-500 font-medium">性格偏好解读</span>
-                        <p class="text-stone-800 mt-1 leading-relaxed">${p.personalityDesc}</p>
-                    </div>
-
-                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80">
-                        <span class="text-stone-500 font-medium">互动避雷指南</span>
-                        <p class="text-stone-800 mt-1 leading-relaxed">避免单字冷淡回复、切忌连续逼问行踪；谈论视觉、音乐或社交话题时回应意愿最高。</p>
-                    </div>
-
-                    <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80">
-                        <span class="text-stone-500 font-medium">多模态档案基底</span>
-                        <p class="text-stone-800 mt-1 leading-relaxed">当前版本：<b class="text-stone-900">v2.4 (支持语音/图片语义提纯)</b><br>历史积累: ${p.timeline.length} 个里程碑节点</p>
-                    </div>
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-2">
+                    <span class="text-stone-500 font-medium block">性格与心理</span>
+                    <div><b>MBTI：</b><input type="text" id="editMbti" value="${p.mbti}" class="w-full bg-white border border-stone-200 rounded px-2 py-1 uppercase"></div>
+                    <div><b>性格类型：</b><input type="text" id="editPersonalityType" value="${p.personality_type || '感性型'}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
+                    <div><b>性格画像：</b><textarea id="editTraits" rows="2" class="w-full bg-white border border-stone-200 rounded px-2 py-1">${p.traits || ''}</textarea></div>
+                    <div><b>最打动ta的方式：</b><textarea id="editAttractionTips" rows="2" class="w-full bg-white border border-stone-200 rounded px-2 py-1">${p.attraction_tips || ''}</textarea></div>
+                    <div><b>注意事项：</b><textarea id="editNotes" rows="2" class="w-full bg-white border border-stone-200 rounded px-2 py-1">${p.notes || ''}</textarea></div>
                 </div>
-            `;
-        }
+            </div>
 
-        function updatePersonaStatus(id, newStatus) {
-            const p = state.personas.find(x => x.id === id);
-            if (p) {
-                p.status = newStatus;
-                changeActivePersona(id);
+            <div class="mt-4 flex justify-end space-x-2">
+                <button onclick="toggleEditPersona()" class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition">取消</button>
+                <button onclick="savePersonaEdit()" class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold shadow-sm transition">保存更新</button>
+            </div>
+        `;
+                document.getElementById('editToggleText').innerText = '取消编辑';
+            } else {
+                // 只读模式
+                container.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1">
+                    <span class="text-stone-500 font-medium block">基本信息</span>
+                    <div><b>昵称：</b>${p.name}</div>
+                    <div><b>性别：</b>${p.gender || '未填'}</div>
+                    <div><b>年龄：</b>${p.age || '未填'}</div>
+                    <div><b>职业：</b>${p.occupation || '未填'}</div>
+                    <div><b>城市：</b>${p.city || '未填'}</div>
+                    <div><b>认识途径：</b>${p.how_met || '未填'}</div>
+                    <div><b>关系阶段：</b><span class="px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}">${p.status}</span></div>
+                </div>
+
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1">
+                    <span class="text-stone-500 font-medium block">性格与心理</span>
+                    <div><b>MBTI：</b>${p.mbti}</div>
+                    <div><b>性格类型：</b>${p.personality_type || '感性型'}</div>
+                    <div><b>性格画像：</b>${p.traits || '未填写'}</div>
+                    <div><b>最打动ta的方式：</b>${p.attraction_tips || '未填写'}</div>
+                    <div><b>注意事项：</b>${p.notes || '未填写'}</div>
+                </div>
+            </div>
+
+            <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 text-xs space-y-1 mt-4">
+                <span class="text-stone-500 font-medium block">多模态附件</span>
+                <div>共 ${p.attachments ? p.attachments.length : 0} 个关联文件</div>
+            </div>
+        `;
+                document.getElementById('editToggleText').innerText = '编辑档案';
             }
         }
+
+        // function updatePersonaStatus(id, newStatus) {
+        //     const p = state.personas.find(x => x.id === id);
+        //     if (p) {
+        //         p.status = newStatus;
+        //         changeActivePersona(id);
+        //     }
+        // }
 
         function renderSimulatorView() {
             const p = getActivePersona();
@@ -2410,6 +2481,68 @@
                 changeActivePersona(createdPersona.id);
             } catch (error) {
                 alert('保存失败: ' + error.message);
+            }
+        }
+
+        let isEditing = false;
+
+        function toggleEditPersona() {
+            isEditing = !isEditing;
+            renderPersonaDetailContent(isEditing);
+        }
+
+        async function savePersonaEdit() {
+            const p = getActivePersona();
+            const updatedData = {
+                name: document.getElementById('editName').value.trim(),
+                gender: document.getElementById('editGender').value,
+                age: document.getElementById('editAge').value.trim(),
+                occupation: document.getElementById('editOccupation').value.trim(),
+                city: document.getElementById('editCity').value.trim(),
+                mbti: document.getElementById('editMbti').value.trim().toUpperCase(),
+                personality_type: document.getElementById('editPersonalityType').value.trim() || '感性型',
+                how_met: document.getElementById('editHowMet').value.trim(),
+                status: document.getElementById('editStatus').value,
+                traits: document.getElementById('editTraits').value.trim(),
+                attraction_tips: document.getElementById('editAttractionTips').value.trim(),
+                notes: document.getElementById('editNotes').value.trim(),
+            };
+
+            if (!updatedData.name) {
+                alert('昵称不能为空');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/persona/${p.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                if (!response.ok) throw new Error('更新失败');
+                const result = await response.json();
+                // 更新本地 state
+                const index = state.personas.findIndex(person => person.id === p.id);
+                if (index !== -1) {
+                    state.personas[index] = { ...state.personas[index], ...result.persona };
+                }
+                // 退出编辑模式并刷新显示
+                isEditing = false;
+                renderActivePersonaDetails();
+                // 刷新其他视图
+                renderHeaderSelect();
+                renderPersonasView();
+                if (state.activeTab === 'simulator') renderSimulatorView();
+                if (state.activeTab === 'decision') renderDecisionView();
+                if (state.activeTab === 'timeline') renderTimelineView();
+                // 提示
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-xs px-4 py-2 rounded-xl shadow-lg z-50';
+                toast.innerText = '✅ 档案已更新';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            } catch (error) {
+                alert('更新失败：' + error.message);
             }
         }
 
