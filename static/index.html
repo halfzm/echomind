@@ -266,8 +266,7 @@
             <!-- Bottom Target Info Switcher Badge -->
             <div class="px-3">
                 <div class="light-card p-3 rounded-2xl flex items-center space-x-3 border border-stone-200">
-                    <img id="sidebarAvatar"
-                        src="/static/avatar.jpg"
+                    <img id="sidebarAvatar" src="/static/avatar.jpg"
                         class="w-9 h-9 rounded-full object-cover ring-2 ring-stone-200 shrink-0">
                     <div class="hidden lg:block overflow-hidden">
                         <p id="sidebarName" class="text-xs font-bold text-stone-900 truncate">林小A</p>
@@ -1607,7 +1606,7 @@
                 messages,
                 streaming: true,
                 generation: {
-                    max_new_tokens: 256,
+                    max_new_tokens: 1024,
                     do_sample: true,
                     length_penalty: 1.1,
                 },
@@ -1985,6 +1984,11 @@
             const files = Array.from(e.target.files);
             files.forEach(file => {
                 const reader = new FileReader();
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                const isTextFile = ['txt', 'json', 'csv', 'log', 'md', 'js', 'py', 'xml', 'html', 'css'].includes(fileExt);
+                const mimeType = file.type;
+
+                // 如果是图片或音频，直接存为 DataURL 并显示提示
                 if (type === 'image' || type === 'audio') {
                     reader.readAsDataURL(file);
                     reader.onload = (evt) => {
@@ -1995,8 +1999,15 @@
                             url: evt.target.result
                         });
                         renderDecisionUploadsList();
+                        // 追加提示到文本框
+                        // const currentInput = document.getElementById('decisionChatInput');
+                        // currentInput.value += `\n[上传了${type === 'image' ? '图片' : '音频'}文件: ${file.name}]`;
                     };
-                } else {
+                    return;
+                }
+
+                // 对于文件类型，判断是否为可读文本
+                if (type === 'file' && (isTextFile || mimeType.startsWith('text/'))) {
                     reader.readAsText(file);
                     reader.onload = (evt) => {
                         state.decisionUploads.push({
@@ -2005,9 +2016,27 @@
                             name: file.name,
                             content: evt.target.result
                         });
-                        const currentInput = document.getElementById('decisionChatInput');
-                        currentInput.value += `\n[文件导入 ${file.name}]:\n` + evt.target.result.slice(0, 300) + '...';
                         renderDecisionUploadsList();
+                        // 追加文本内容（限制长度避免过长）
+                        const content = evt.target.result;
+                        const preview = content.length > 2000 ? content.slice(0, 2000) + '...\n[内容截断，请查看附件]' : content;
+                        const currentInput = document.getElementById('decisionChatInput');
+                        // currentInput.value += `\n[文件导入 ${file.name}]:\n${preview}`;
+                        currentInput.value += `\n${preview}`;
+                    };
+                } else {
+                    // 非文本文件（如 PDF、DOCX 等）无法前端提取，仅保存并提示
+                    reader.readAsDataURL(file); // 只用于存储，不提取内容
+                    reader.onload = (evt) => {
+                        state.decisionUploads.push({
+                            id: Date.now() + Math.random(),
+                            type: 'file',
+                            name: file.name,
+                            url: evt.target.result // 仅用于预览或下载
+                        });
+                        renderDecisionUploadsList();
+                        const currentInput = document.getElementById('decisionChatInput');
+                        // currentInput.value += `\n[上传了文件: ${file.name}，该类型暂不支持自动提取文本]`;
                     };
                 }
             });
@@ -2251,19 +2280,48 @@
 
                     if (z.target === 'decision') {
                         files.forEach(file => {
-                            const type = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('audio/') ? 'audio' : 'file');
-                            const reader = new FileReader();
-                            if (type === 'file') {
-                                reader.readAsText(file);
-                                reader.onload = (evt) => {
-                                    state.decisionUploads.push({ id: Date.now(), type, name: file.name, content: evt.target.result });
-                                    renderDecisionUploadsList();
-                                };
-                            } else {
+                            const fileExt = file.name.split('.').pop().toLowerCase();
+                            const isTextFile = ['txt', 'json', 'csv', 'log', 'md', 'js', 'py', 'xml', 'html', 'css'].includes(fileExt);
+                            const mimeType = file.type;
+
+                            if (file.type.startsWith('image/')) {
+                                const reader = new FileReader();
                                 reader.readAsDataURL(file);
                                 reader.onload = (evt) => {
-                                    state.decisionUploads.push({ id: Date.now(), type, name: file.name, url: evt.target.result });
+                                    state.decisionUploads.push({ id: Date.now(), type: 'image', name: file.name, url: evt.target.result });
                                     renderDecisionUploadsList();
+                                    const input = document.getElementById('decisionChatInput');
+                                    input.value += `\n[拖拽上传了图片: ${file.name}]`;
+                                };
+                            } else if (file.type.startsWith('audio/')) {
+                                const reader = new FileReader();
+                                reader.readAsDataURL(file);
+                                reader.onload = (evt) => {
+                                    state.decisionUploads.push({ id: Date.now(), type: 'audio', name: file.name, url: evt.target.result });
+                                    renderDecisionUploadsList();
+                                    const input = document.getElementById('decisionChatInput');
+                                    input.value += `\n[拖拽上传了音频: ${file.name}]`;
+                                };
+                            } else if (isTextFile || mimeType.startsWith('text/')) {
+                                const reader = new FileReader();
+                                reader.readAsText(file);
+                                reader.onload = (evt) => {
+                                    state.decisionUploads.push({ id: Date.now(), type: 'file', name: file.name, content: evt.target.result });
+                                    renderDecisionUploadsList();
+                                    const content = evt.target.result;
+                                    const preview = content.length > 2000 ? content.slice(0, 2000) + '...\n[内容截断]' : content;
+                                    const input = document.getElementById('decisionChatInput');
+                                    input.value += `\n[拖拽导入 ${file.name}]:\n${preview}`;
+                                };
+                            } else {
+                                // 非文本文件只记录
+                                const reader = new FileReader();
+                                reader.readAsDataURL(file);
+                                reader.onload = (evt) => {
+                                    state.decisionUploads.push({ id: Date.now(), type: 'file', name: file.name, url: evt.target.result });
+                                    renderDecisionUploadsList();
+                                    const input = document.getElementById('decisionChatInput');
+                                    input.value += `\n[拖拽上传了文件: ${file.name}，无法提取文本]`;
                                 };
                             }
                         });
