@@ -281,7 +281,12 @@ async def update_persona(persona_id: str, updated_data: Dict[str, Any]):
 
 @app.websocket("/chat")
 async def websocket_proxy(websocket: WebSocket):
-    """模拟聊天函数"""
+    """
+    模拟聊天
+    场景分析
+
+    需要把聊天结果放入chathistory?
+    """
     await websocket.accept()
 
     try:
@@ -347,10 +352,18 @@ async def websocket_proxy(websocket: WebSocket):
 
 @app.websocket("/analyze")
 async def analyze_proxy(websocket: WebSocket):
-    """分析聊天记录，生成统计数据和可视化图表
+    """
+    分析聊天记录
+    生成统计数据和可视化图表
     统计数据、图标之类的是之前的档案中建立
     只分析这一次上传的聊天记录，并给出策略什么的
+
+    分析的话应该是不知道怎么办的意思？这是什么信号，我应该怎么处理？
+    应该让AI直接给出答复
+
+    同时要更新状态
     """
+
     await websocket.accept()
 
     try:
@@ -371,7 +384,7 @@ async def analyze_proxy(websocket: WebSocket):
             while True:
                 msg = await websocket.receive_text()
                 data = json.loads(msg)
-                print(data)  # 探针--输出消息
+                # print(data)  # 探针--输出消息
 
                 # 拦截 input.append 事件，注入 system 消息
                 if data.get("type") == "input.append":
@@ -412,15 +425,6 @@ async def analyze_proxy(websocket: WebSocket):
             await websocket.close()
         except Exception as e:
             print(f"关闭代理 websocket {e}")
-
-
-@app.post("/analysis")
-async def analysis():
-    """分析聊天记录，生成统计数据和可视化图表
-    统计数据、图标之类的是之前的档案中建立
-    只分析这一次上传的聊天记录，并给出策略什么的
-    """
-    pass
 
 
 @app.get("/timeline")

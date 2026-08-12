@@ -270,7 +270,7 @@
                         class="w-9 h-9 rounded-full object-cover ring-2 ring-stone-200 shrink-0">
                     <div class="hidden lg:block overflow-hidden">
                         <p id="sidebarName" class="text-xs font-bold text-stone-900 truncate">林小A</p>
-                        <p id="sidebarStatus" class="text-[10px] text-amber-600 font-semibold">✨ 暧昧期 | ENFP</p>
+                        <p id="sidebarStatus" class="text-[10px] text-amber-600 font-semibold">✨ 暗恋中 | ENFP</p>
                     </div>
                 </div>
             </div>
@@ -619,12 +619,12 @@
                             <h3
                                 class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2 mb-3">
                                 <i class="fa-solid fa-flag-checkered text-stone-700"></i>
-                                <span>跨学科作战计划（3日推进策略）</span>
+                                <span>跨学科作战计划（3阶段推进策略）</span>
                             </h3>
                             <div class="space-y-2.5 text-xs" id="tacticalPlanBox">
                                 <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1">
                                     <div class="flex justify-between font-bold text-stone-900">
-                                        <span>Day 1: 情绪抽离与安全降温</span>
+                                        <span>阶段 1: 情绪抽离与安全降温</span>
                                         <span class="text-[10px] text-stone-500">策略：间歇性强化</span>
                                     </div>
                                     <p class="text-stone-600">暂不继续该话题，回复一句“好滴，那你先忙~”即可。给对方留出心理回甘空间。</p>
@@ -632,7 +632,7 @@
 
                                 <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-500 space-y-1">
                                     <div class="flex justify-between font-bold text-stone-900">
-                                        <span>Day 2: 朋友圈视觉锚点唤醒</span>
+                                        <span>阶段 2: 朋友圈视觉锚点唤醒</span>
                                         <span class="text-[10px] text-stone-500">策略：社交证明</span>
                                     </div>
                                     <p class="text-stone-600">发布一张精致的美食或展览动态（结合对方MBTI爱好），触发对方的主动点赞与赞美。</p>
@@ -640,7 +640,7 @@
 
                                 <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-rose-500 space-y-1">
                                     <div class="flex justify-between font-bold text-stone-900">
-                                        <span>Day 3: 降维邀约尝试</span>
+                                        <span>阶段 3: 降维邀约尝试</span>
                                         <span class="text-[10px] text-stone-500">策略：登门槛效应</span>
                                     </div>
                                     <p class="text-stone-600">以“顺路顺便”为由发送轻量化邀约：“明天刚好在你公司附近办事，要不要顺便喝杯咖啡？”</p>
@@ -1826,23 +1826,392 @@
             state.decisionUploads = [];
             renderDecisionUploadsList();
         }
+        async function buildAnalyzeRequestMessages(persona, text, uploads) {
+            const messages = [];
 
-        function runDecisionAnalysis() {
+            const systemPrompt = `你是一位资深情感关系分析师、微表情与语音语调解读专家，精通进化心理学、依恋理论和行为经济学。
+                用户正在分析他与"${persona.name}"的关系进展（当前阶段：${persona.status}，MBTI：${persona.mbti}）。
+                用户上传了多模态聊天记录（可能包含文本、聊天截图、语音消息等）。
+
+                请严格只输出 JSON，不要包含 markdown 代码块标记（如 \`\`\`json），也不要有任何其他解释性文字。
+
+                JSON 结构如下：
+                {
+                    "subtext": "字符串。包含具体语句分析和心理动机解读。每条分析建议包含：对方原话/场景摘要、防御度评级（高/中/低）、潜台词解读、心理动机分析、用户行为风险提示。使用换行符分隔不同条目。",
+                    "plan": "可以是字符串或数组。如果是字符串，请分三段，每段以 Stage1 / Stage2 / Stage3 开头，包含策略名称和具体行动建议。如果是数组，每个元素包含 stage、title、strategy、action 字段。"
+                }
+
+                示例输出：
+                {
+                "subtext": "1. 原话：还行吧 跟朋友一起去的\\n防御度：中等\\n潜台词：刻意模糊同伴性别，保留边界感。\\n心理动机：处于社交疲惫期，非针对性冷淡。\\n风险提示：切忌连续追问对方是和谁去的。\\n\\n2. 原话：哈哈挺好的\\n防御度：低\\n潜台词：情绪放松，愿意维持对话。\\n心理动机：对你有一定安全感。",
+                "plan": [
+                    {"stage":"Stage 1","title":"情绪抽离与安全降温","strategy":"间歇性强化","action":"回复一句好滴，那你先忙~即可。"},
+                    {"stage":"Stage 2","title":"朋友圈视觉锚点唤醒","strategy":"社交证明","action":"发布精致动态，触发对方主动点赞。"},
+                    {"stage":"Stage 3","title":"降维邀约尝试","strategy":"登门槛效应","action":"以顺路为由发送轻量化邀约。"}
+                ]
+                }`;
+
+            messages.push({ role: 'system', content: systemPrompt });
+
+            // 构建多模态用户消息
+            const content = [];
+            if (text.trim()) {
+                content.push({ type: 'text', text: text.trim() });
+            }
+
+            for (const item of uploads) {
+                if (item.type === 'image' && item.url) {
+                    const base64 = item.url.split(',')[1];
+                    if (base64) content.push({ type: 'image', data: base64, name: item.name });
+                } else if (item.type === 'audio' && item.url) {
+                    let source = null;
+                    if (item.url.startsWith('blob:') || item.url.startsWith('data:')) {
+                        try {
+                            const resp = await fetch(item.url);
+                            source = await resp.blob();
+                        } catch (e) { continue; }
+                    }
+                    if (source) {
+                        try {
+                            const base64 = await convertToWav16k(source);
+                            content.push({ type: 'audio', data: base64, name: item.name });
+                        } catch (e) { continue; }
+                    }
+                } else if (item.type === 'file' && item.content) {
+                    content.push({ type: 'text', text: `[文件 ${item.name} 内容]:\n${item.content}` });
+                }
+            }
+
+            messages.push({ role: 'user', content });
+            return messages;
+        }
+
+
+        let analyzeIsRunning = false;
+
+        async function runDecisionAnalysis() {
+            if (analyzeIsRunning) return;
+
             const text = document.getElementById('decisionChatInput').value.trim();
-            const uploadCount = state.decisionUploads.length;
+            const uploads = state.decisionUploads;
+            if (!text && uploads.length === 0) return;
 
-            if (!text && uploadCount === 0) return;
+            analyzeIsRunning = true;
 
+            // 加载状态
             const subtextContainer = document.getElementById('subtextContainer');
-            subtextContainer.innerHTML = `
-                <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80 space-y-2">
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="font-bold text-stone-900">多模态信号整合 (已提纯 ${uploadCount} 个附件)</span>
-                        <span class="text-[10px] text-emerald-700 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">热情度：升高</span>
+            const tacticalPlanBox = document.getElementById('tacticalPlanBox');
+            subtextContainer.innerHTML = `<div class="flex items-center justify-center py-8 text-xs text-stone-500"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>军师正在深度解构多模态信号...</div>`;
+            tacticalPlanBox.innerHTML = `<div class="flex items-center justify-center py-8 text-xs text-stone-500"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>制定跨学科作战计划中...</div>`;
+
+            const p = getActivePersona();
+            let messages;
+            try {
+                messages = await buildAnalyzeRequestMessages(p, text, uploads);
+            } catch (e) {
+                subtextContainer.innerHTML = `<div class="bg-rose-50 p-4 rounded-xl border border-rose-200 text-rose-700 text-xs"><i class="fa-solid fa-circle-exclamation mr-1"></i>构建请求失败：${e.message}</div>`;
+                tacticalPlanBox.innerHTML = '';
+                analyzeIsRunning = false;
+                return;
+            }
+
+            const wsBody = {
+                messages,
+                streaming: true,
+                generation: {
+                    max_new_tokens: 2048,
+                    do_sample: true,
+                    length_penalty: 1.1,
+                },
+                image: { max_slice_nums: 1 },
+                omni_mode: false,
+            };
+
+            const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+            const ws = new WebSocket(`${wsProtocol}://${window.location.host}/analyze`);
+
+            let initSent = false;
+            let inputSent = false;
+            let closeSent = false;
+            let fullReply = '';
+            let finished = false;
+            let timeoutId = null;
+
+            const sendInit = () => {
+                if (initSent || ws.readyState !== WebSocket.OPEN) return;
+                initSent = true;
+                ws.send(JSON.stringify({ type: 'session.init', payload: {} }));
+            };
+
+            const sendInput = () => {
+                if (inputSent || ws.readyState !== WebSocket.OPEN) return;
+                inputSent = true;
+                ws.send(JSON.stringify({ type: 'input.append', input: wsBody }));
+            };
+
+            const sendClose = (reason = 'turn_done') => {
+                if (closeSent || ws.readyState !== WebSocket.OPEN) return;
+                closeSent = true;
+                ws.send(JSON.stringify({ type: 'session.close', reason }));
+            };
+
+            const finish = (errorMsg = null) => {
+                if (finished) return;
+                finished = true;
+                if (timeoutId) clearTimeout(timeoutId);
+
+                if (errorMsg) {
+                    subtextContainer.innerHTML = `<div class="bg-rose-50 p-4 rounded-xl border border-rose-200 text-rose-700 text-xs"><i class="fa-solid fa-circle-exclamation mr-1"></i>分析失败：${errorMsg}</div>`;
+                    tacticalPlanBox.innerHTML = '';
+                } else {
+                    parseAndRenderAnalyzeResult(fullReply);
+                }
+
+                analyzeIsRunning = false;
+                try { ws.close(); } catch (_) { }
+            };
+
+            ws.onopen = () => { sendInit(); };
+
+            ws.onmessage = (event) => {
+                let msg;
+                try { msg = JSON.parse(event.data); } catch (e) { return; }
+
+                if (msg.type === 'session.queue_done') {
+                    sendInit();
+                } else if (msg.type === 'session.created') {
+                    sendInput();
+                } else if (msg.type === 'response.output.delta') {
+                    if (msg.kind === 'text' && msg.text) {
+                        fullReply += msg.text;
+                    }
+                } else if (msg.type === 'response.done') {
+                    sendClose();
+                    finish();
+                } else if (msg.type === 'session.closed') {
+                    const reason = msg.reason || '';
+                    const diag = msg.diagnostic?.message || msg.error?.message || '';
+                    if (reason && !['turn_done', 'client_closed'].includes(reason)) {
+                        finish(diag || reason);
+                    } else {
+                        if (!fullReply) finish('未收到分析结果');
+                        else finish();
+                    }
+                } else if (msg.type === 'error') {
+                    finish(msg.error?.message || '未知错误');
+                }
+            };
+
+            ws.onerror = () => { finish('连接错误'); };
+            ws.onclose = () => { if (!finished && analyzeIsRunning) finish('连接意外关闭'); };
+
+            timeoutId = setTimeout(() => {
+                if (!finished && analyzeIsRunning) finish('请求超时');
+            }, 60000);
+        }
+
+        function parseAndRenderAnalyzeResult(text) {
+            const subtextContainer = document.getElementById('subtextContainer');
+            const tacticalPlanBox = document.getElementById('tacticalPlanBox');
+
+            let data = null;
+            let parseError = null;
+
+            // 1. 尝试提取并解析 JSON（兼容模型偶尔包裹的 markdown 代码块）
+            try {
+                let jsonStr = text.trim();
+                const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (codeBlockMatch) {
+                    jsonStr = codeBlockMatch[1].trim();
+                }
+                data = JSON.parse(jsonStr);
+            } catch (e) {
+                parseError = e;
+            }
+
+            // 2. JSON 解析成功且包含所需字段
+            if (data && (data.subtext || data.plan)) {
+                // ===== 渲染 subtext（潜台词诊断）=====
+                if (data.subtext) {
+                    const subtext = String(data.subtext);
+                    const entries = subtext.split(/\n\n+/).filter(s => s.trim().length > 3);
+
+                    if (entries.length > 0) {
+                        subtextContainer.innerHTML = entries.map(entry => {
+                            let defense = '中等';
+                            let defenseClass = 'text-amber-700 bg-amber-100 border-amber-200';
+                            if (/防御度[：:]?\s*高|防御[:：]\s*高|高防御|戒备高|强防御|偏高/i.test(entry)) {
+                                defense = '偏高';
+                                defenseClass = 'text-rose-600 bg-rose-100 border-rose-200';
+                            } else if (/防御度[：:]?\s*低|防御[:：]\s*低|低防御|戒备低|放松|安全区|偏低/i.test(entry)) {
+                                defense = '偏低';
+                                defenseClass = 'text-emerald-600 bg-emerald-100 border-emerald-200';
+                            }
+
+                            let html = entry
+                                .replace(/\n/g, '<br>')
+                                .replace(/(潜台词[：:]?\s*)(.+?)(?=<br>|$)/, '<span class="font-semibold text-stone-900">$1</span><span class="text-stone-700">$2</span>')
+                                .replace(/(心理动机[：:]?\s*)(.+?)(?=<br>|$)/, '<span class="font-semibold text-stone-900">$1</span><span class="text-stone-600">$2</span>')
+                                .replace(/(风险提示[：:]?\s*)(.+?)(?=<br>|$)/, '<span class="font-semibold text-rose-600">$1</span><span class="text-rose-700">$2</span>');
+
+                            return `
+                        <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80">
+                            <div class="flex items-center justify-between text-xs mb-1.5">
+                                <span class="font-bold text-stone-900">信号解读</span>
+                                <span class="text-[10px] ${defenseClass} px-1.5 py-0.5 rounded border font-medium">防御度：${defense}</span>
+                            </div>
+                            <div class="text-xs text-stone-600 leading-relaxed">${html}</div>
+                        </div>
+                    `;
+                        }).join('');
+                    } else {
+                        subtextContainer.innerHTML = `
+                    <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80">
+                        <div class="text-xs text-stone-600 leading-relaxed">${subtext.replace(/\n/g, '<br>')}</div>
+                    </div>`;
+                    }
+                } else {
+                    subtextContainer.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">未返回潜台词诊断内容</div>`;
+                }
+
+                // ===== 渲染 plan（跨学科作战计划）=====
+                if (data.plan) {
+                    const colors = ['border-stone-800', 'border-stone-500', 'border-rose-500', 'border-sky-500', 'border-emerald-500'];
+
+                    if (Array.isArray(data.plan)) {
+                        tacticalPlanBox.innerHTML = data.plan.map((item, idx) => {
+                            const color = colors[idx % colors.length];
+                            const stage = item.stage || item.Stage || `Stage ${idx + 1}`;
+                            const title = item.title || item.Title || '行动建议';
+                            const strategy = item.strategy || item.Strategy || '心理战术';
+                            const action = item.action || item.Action || item.desc || item.content || '';
+                            return `
+                        <div class="p-3 bg-stone-50 rounded-xl border-l-4 ${color} space-y-1.5">
+                            <div class="flex justify-between items-start gap-2">
+                                <span class="font-bold text-stone-900 text-xs">${stage}：${title}</span>
+                                <span class="text-[10px] text-stone-500 bg-white border border-stone-200 px-1.5 py-0.5 rounded shrink-0">${strategy}</span>
+                            </div>
+                            <p class="text-stone-600 text-xs leading-relaxed">${String(action).replace(/\n/g, '<br>')}</p>
+                        </div>
+                    `;
+                        }).join('');
+                    } else {
+                        // plan 为字符串，按 Stage 分割
+                        const planStr = String(data.plan);
+                        const stageBlocks = planStr.split(/\n(?=Stage\s*\d[：:.]|第\s*\d\s*天[：:.]|Stage\s*\d\s*)/i).filter(s => s.trim());
+
+                        if (stageBlocks.length >= 2) {
+                            tacticalPlanBox.innerHTML = stageBlocks.map((block, idx) => {
+                                const color = colors[idx % colors.length];
+                                const lines = block.trim().split('\n').filter(l => l.trim());
+                                const titleLine = lines[0] || `Stage ${idx + 1}`;
+                                const body = lines.slice(1).join('<br>');
+                                const strategyMatch = block.match(/策略[：:]?\s*(.+?)(?=\n|$)/);
+                                const strategy = strategyMatch ? strategyMatch[1].trim() : '心理战术';
+
+                                return `
+                            <div class="p-3 bg-stone-50 rounded-xl border-l-4 ${color} space-y-1.5">
+                                <div class="flex justify-between items-start gap-2">
+                                    <span class="font-bold text-stone-900 text-xs">${titleLine}</span>
+                                    <span class="text-[10px] text-stone-500 bg-white border border-stone-200 px-1.5 py-0.5 rounded shrink-0">${strategy}</span>
+                                </div>
+                                <p class="text-stone-600 text-xs leading-relaxed">${body}</p>
+                            </div>
+                        `;
+                            }).join('');
+                        } else {
+                            tacticalPlanBox.innerHTML = `
+                        <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1">
+                            <p class="text-stone-600 text-xs leading-relaxed">${planStr.replace(/\n/g, '<br>')}</p>
+                        </div>`;
+                        }
+                    }
+                } else {
+                    tacticalPlanBox.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">未返回作战计划内容</div>`;
+                }
+
+                return;
+            }
+
+            // 3. JSON 解析失败或字段缺失 → Fallback：降级为文本解析
+            console.warn('JSON 解析失败或字段缺失，降级为文本解析:', parseError);
+
+            let subtext = '';
+            let tactical = '';
+            const splitRegex = /(?:^|\n)(?:【?---?\s*作战计划\s*---?】?|【作战计划】|作战计划[：:]?)\s*/i;
+            const parts = text.split(splitRegex);
+
+            if (parts.length >= 2) {
+                subtext = parts[0].trim().replace(/^(?:【?---?\s*潜台词诊断\s*---?】?|【潜台词诊断】|潜台词诊断[：:]?)\s*/i, '');
+                tactical = parts.slice(1).join('\n').trim();
+            } else {
+                const mid = Math.floor(text.length / 2);
+                subtext = text.slice(0, mid).trim();
+                tactical = text.slice(mid).trim();
+            }
+
+            // Fallback 渲染 subtext
+            if (subtext) {
+                const entries = subtext.split(/\n(?=\d+[.．、]|[-•*]\s|对方[:：]|原话[:：]|【)/).filter(e => e.trim().length > 5);
+                if (entries.length > 0) {
+                    subtextContainer.innerHTML = entries.map(entry => {
+                        let defense = '中等';
+                        let defenseClass = 'text-amber-700 bg-amber-100 border-amber-200';
+                        if (/防御度[：:]?\s*高|防御[:：]高|高防御|戒备高|强防御/i.test(entry)) {
+                            defense = '偏高';
+                            defenseClass = 'text-rose-600 bg-rose-100 border-rose-200';
+                        } else if (/防御度[：:]?\s*低|防御[:：]低|低防御|戒备低|放松|安全区/i.test(entry)) {
+                            defense = '偏低';
+                            defenseClass = 'text-emerald-600 bg-emerald-100 border-emerald-200';
+                        }
+                        let html = entry.trim().replace(/\n/g, '<br>')
+                            .replace(/(潜台词[：:]?\s*)(.+?)(?=<br>|$)/, '<span class="font-semibold text-stone-900">$1</span><span class="text-stone-700">$2</span>')
+                            .replace(/(风险提示[：:]?\s*)(.+?)(?=<br>|$)/, '<span class="font-semibold text-rose-600">$1</span><span class="text-rose-700">$2</span>');
+                        return `
+                    <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80">
+                        <div class="flex items-center justify-between text-xs mb-1.5">
+                            <span class="font-bold text-stone-900">信号解读</span>
+                            <span class="text-[10px] ${defenseClass} px-1.5 py-0.5 rounded border font-medium">防御度：${defense}</span>
+                        </div>
+                        <div class="text-xs text-stone-600 leading-relaxed">${html}</div>
                     </div>
-                    <p class="text-xs text-stone-600 leading-relaxed">【视觉/语音潜台词】：解析图像与语音语调后，发现对方在结尾使用了上扬语调与衍生表情符号，表明心理防御层已降低，处于高粘性社交期。</p>
-                </div>
-            `;
+                `;
+                    }).join('');
+                } else {
+                    subtextContainer.innerHTML = `<div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200/80"><p class="text-xs text-stone-600 leading-relaxed">${subtext.replace(/\n/g, '<br>')}</p></div>`;
+                }
+            } else {
+                subtextContainer.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">未解析到潜台词诊断内容</div>`;
+            }
+
+            // Fallback 渲染 tactical
+            if (tactical) {
+                const stageBlocks = tactical.split(/\n(?=Stage\s*\d[：:.]|第\s*\d\s*天[：:.]|Stage\s*\d\s*[:.\s]|【?\s*Stage\s*\d)/i).filter(s => s.trim());
+                const colors = ['border-stone-800', 'border-stone-500', 'border-rose-500', 'border-sky-500', 'border-emerald-500'];
+                if (stageBlocks.length >= 2) {
+                    tacticalPlanBox.innerHTML = stageBlocks.map((block, idx) => {
+                        const color = colors[idx % colors.length];
+                        const lines = block.trim().split('\n').filter(l => l.trim());
+                        const title = lines[0] || `Stage ${idx + 1}`;
+                        const body = lines.slice(1).join('<br>');
+                        const strategyMatch = block.match(/策略[：:]?\s*(.+?)(?=\n|$)/);
+                        const strategy = strategyMatch ? strategyMatch[1].trim() : '心理战术';
+                        return `
+                    <div class="p-3 bg-stone-50 rounded-xl border-l-4 ${color} space-y-1.5">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-stone-900 text-xs">${title}</span>
+                            <span class="text-[10px] text-stone-500 bg-white border border-stone-200 px-1.5 py-0.5 rounded">${strategy}</span>
+                        </div>
+                        <p class="text-stone-600 text-xs leading-relaxed">${body}</p>
+                    </div>
+                `;
+                    }).join('');
+                } else {
+                    tacticalPlanBox.innerHTML = `<div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1"><p class="text-stone-600 text-xs leading-relaxed">${tactical.replace(/\n/g, '<br>')}</p></div>`;
+                }
+            } else {
+                tacticalPlanBox.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">未解析到作战计划内容</div>`;
+            }
         }
 
         async function renderTimelineView() {
