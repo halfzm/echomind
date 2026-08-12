@@ -267,7 +267,7 @@
             <div class="px-3">
                 <div class="light-card p-3 rounded-2xl flex items-center space-x-3 border border-stone-200">
                     <img id="sidebarAvatar"
-                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
+                        src="/static/avatar.jpg"
                         class="w-9 h-9 rounded-full object-cover ring-2 ring-stone-200 shrink-0">
                     <div class="hidden lg:block overflow-hidden">
                         <p id="sidebarName" class="text-xs font-bold text-stone-900 truncate">林小A</p>
@@ -345,7 +345,7 @@
                             <i class="fa-solid fa-brain text-xs"></i>
                             <span>军师模式 (AI侧边诊断)</span>
                         </button> -->
-                        <!-- 新增：TTS 语音回复 + 语音克隆上传 -->
+                        <!-- TTS 语音回复 + 语音克隆上传 -->
                         <div
                             class="flex items-center space-x-3 bg-stone-100/80 px-3 py-1.5 rounded-xl border border-stone-200/60 text-xs">
                             <div class="flex items-center space-x-2">
@@ -685,7 +685,6 @@
                     <div class="absolute left-8 top-8 bottom-8 w-0.5 bg-stone-200"></div>
 
                     <!-- 添加事件表单（默认隐藏） -->
-                    <!-- 添加事件表单（默认隐藏） -->
                     <div id="addTimelineForm" class="hidden mb-6 pl-12">
                         <div class="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
                             <div class="flex items-center justify-between">
@@ -906,7 +905,7 @@
                         class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none"></textarea>
                 </div>
 
-                <!-- 文件上传部分保持不变 -->
+                <!-- 文件上传部分 -->
                 <div>
                     <label class="block text-stone-600 mb-1 font-medium">上传关联图片截图/语音/记录文件 (.txt/.json/.jpg)</label>
                     <div class="flex items-center space-x-2">
@@ -1052,7 +1051,7 @@
             }
         }
 
-        // 新增函数：从后端加载关系人
+        // 从后端加载关系人
         async function loadPersonas() {
             try {
                 const response = await fetch('/persona');
@@ -1915,18 +1914,15 @@
             }
         }
 
-        /**
- * 切换添加事件表单的显示/隐藏
- */
+
+        //切换添加事件表单的显示/隐藏
         function toggleAddTimelineForm() {
             const form = document.getElementById('addTimelineForm');
             form.classList.toggle('hidden');
             // 如果隐藏，可选择性清空表单（用户可能希望保留输入，这里不强制清空）
         }
 
-        /**
-         * 提交新事件到后端
-         */
+        //提交新事件到后端
         async function submitTimelineEvent() {
             const title = document.getElementById('timelineTitle').value.trim();
             const desc = document.getElementById('timelineDesc').value.trim();
@@ -2306,38 +2302,38 @@
             }
         }
 
-        function toggleLingxiWindow() {
-            document.getElementById('lingxiWindow').classList.toggle('hidden');
-        }
+        // function toggleLingxiWindow() {
+        //     document.getElementById('lingxiWindow').classList.toggle('hidden');
+        // }
 
-        function sendLingxiMsg() {
-            const input = document.getElementById('lingxiInput');
-            const val = input.value.trim();
-            if (!val) return;
+        // function sendLingxiMsg() {
+        //     const input = document.getElementById('lingxiInput');
+        //     const val = input.value.trim();
+        //     if (!val) return;
 
-            const box = document.getElementById('lingxiChatBox');
-            box.innerHTML += `
-                <div class="flex justify-end">
-                    <div class="bg-neutral-900 text-white p-2.5 rounded-xl max-w-[85%] text-xs shadow-sm">
-                        ${val}
-                    </div>
-                </div>
-            `;
-            input.value = '';
-            box.scrollTop = box.scrollHeight;
+        //     const box = document.getElementById('lingxiChatBox');
+        //     box.innerHTML += `
+        //         <div class="flex justify-end">
+        //             <div class="bg-neutral-900 text-white p-2.5 rounded-xl max-w-[85%] text-xs shadow-sm">
+        //                 ${val}
+        //             </div>
+        //         </div>
+        //     `;
+        //     input.value = '';
+        //     box.scrollTop = box.scrollHeight;
 
-            setTimeout(() => {
-                box.innerHTML += `
-                    <div class="bg-white border border-stone-200 text-stone-800 p-2.5 rounded-xl max-w-[85%] text-xs space-y-2 shadow-sm">
-                        <p>💡 <b>灵犀诊断回复：</b>建议点击【决策台】直接拖入聊天截图或记录文件，能为你输出更准确的心态解构报告。</p>
-                        <button onclick="switchTab('decision')" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 px-2 py-1 rounded transition">
-                            👉 跳转至【决策台】分析截图
-                        </button>
-                    </div>
-                `;
-                box.scrollTop = box.scrollHeight;
-            }, 600);
-        }
+        //     setTimeout(() => {
+        //         box.innerHTML += `
+        //             <div class="bg-white border border-stone-200 text-stone-800 p-2.5 rounded-xl max-w-[85%] text-xs space-y-2 shadow-sm">
+        //                 <p>💡 <b>灵犀诊断回复：</b>建议点击【决策台】直接拖入聊天截图或记录文件，能为你输出更准确的心态解构报告。</p>
+        //                 <button onclick="switchTab('decision')" class="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 px-2 py-1 rounded transition">
+        //                     👉 跳转至【决策台】分析截图
+        //                 </button>
+        //             </div>
+        //         `;
+        //         box.scrollTop = box.scrollHeight;
+        //     }, 600);
+        // }
 
 
         function openCreatePersonaModal() { document.getElementById('createPersonaModal').classList.remove('hidden'); }
@@ -2405,7 +2401,7 @@
                 notes,
                 attachments,                // 保留多模态文件
                 // 以下为系统默认值，可根据需要调整
-                tags: ['最新导入', '多模态AI提取'],
+                tags: ['感性型'],
                 heatScore: 0,
                 defensiveLevel: 100,
                 timeline: [{
@@ -2415,7 +2411,7 @@
                     tag: '档案生成'
                 }],
                 chatHistory: [{ sender: 'other', text: '你好呀！' }],
-                avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150'
+                avatar: '/static/avatar.jpg'
             };
 
             try {
