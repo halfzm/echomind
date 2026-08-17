@@ -4,104 +4,20 @@ simp-skill API 封装
 将 /simp 命令封装为可直接调用的 Python 函数
 所有功能均封装在 EchoMind 类中
 """
-
+import os
 import json
 import yaml
 import logging
 from pathlib import Path
-from datetime import datetime
-from enum import Enum
-from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone
+from typing import Optional, Any
 from dataclasses import dataclass, field, asdict
+
+from utils import parse_json_from_text
+from models import CrushProfile, AnalysisResult, State, Strategy
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
-
-
-# ---------- 枚举定义 ----------
-class PersonalityType(Enum):
-    EMOTIONAL = "感性型"
-    RATIONAL = "理性型"
-    TSUNDERE = "傲娇型"
-    GENTLE = "温柔型"
-
-
-class Stage(str, Enum):
-    """关系阶段枚举"""
-
-    ICEBREAK = "破冰期"
-    WARMING = "升温期"
-    FLIRTING = "暧昧期"
-    PRE_CONFESS = "表白前"
-    CONFESS_SUCCESS = "表白后-成功"
-    CONFESS_REJECTED = "表白后-被拒"
-    FRIEND_ZONE = "友谊区"
-    RESTART = "重启期"
-
-
-class Trend(str, Enum):
-    """分数趋势枚举"""
-
-    UP = "up"
-    DOWN = "down"
-    STABLE = "stable"
-
-
-# ============================================================
-# 数据结构（保留在类外部，供所有方法使用）
-# ============================================================
-@dataclass
-class CrushProfile:
-    """心上人档案，对应 profile.md 文件。"""
-
-    name: str = ""  # 昵称
-    slug: str = ""  # 唯一标识
-    gender: str = ""  # 性别
-    age: str = ""  # 年龄
-    occupation: str = ""  # 职业
-    city: str = ""  # 城市
-    mbti: str = ""  # MBTI 类型
-    personality_type: str = "感性型"  # 性格类型
-    how_met: str = ""  # 认识途径
-    traits: str = ""  # ## 性格画像
-    attraction_tips: str = ""  # ## 最打动ta的方式
-    notes: str = ""  # ## 注意事项
-    created_at: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
-
-
-@dataclass
-class State:
-    """表示心上人的动态状态，对应 state.md 文件。"""
-
-    current_stage: str = "破冰期"
-    signal_score: Optional[int] = None
-    last_signal_score: Optional[int] = None
-    score_trend: str = "stable"
-    recommended_mode: str = "混合"  # 例如 "混合" / "纯情" / "策略"
-    last_updated: str = field(default_factory=lambda: datetime.now().isoformat())
-    milestones_done: int = 0
-    status_summary: str = ""  # "当前状态（一句话）" 内容
-    recent_signals: list[str] = field(default_factory=list)  # 最近信号列表
-    strategy_direction: str = ""  # "当前策略方向" 内容
-    next_step_advice: str = ""  # "下一步建议" 内容
-
-
-@dataclass
-class Strategy:
-    current_stage: str = ""  # ## 当前阶段
-    recommended_mode: str = ""  # ## 推荐模式
-    stage_focus: str = ""  # ## 本阶段重点
-    action_plan: str = ""  # ## 近期行动计划
-
-
-@dataclass
-class AnalysisResult:
-    """分析结果"""
-
-    stage: str  # 当前阶段: 认识期/暧昧期/热恋期/危机期
-    signals: list[str]  # 识别到的信号
-    score: int  # 感情温度 (0-100)
-    advice: str  # 建议
 
 
 # ============================================================
@@ -163,14 +79,16 @@ class EchoMind:
                     name=frontmatter.get("name", slug),
                     slug=frontmatter.get("slug", slug),
                     created_at=frontmatter.get(
-                        "created_at", datetime.now().isoformat()
+                        "created_at", datetime.now(tz=timezone.utc).isoformat()
                     ),
                     tags=frontmatter.get("tags", []),
                     mbti=frontmatter.get("mbti"),
                     notes=parts[2].strip(),
                 )
 
-        return CrushProfile(name=slug, slug=slug, created_at=datetime.now().isoformat())
+        return CrushProfile(
+            name=slug, slug=slug, created_at=datetime.now(tz=timezone.utc).isoformat()
+        )
 
     def _update_state(self, slug: str, result: AnalysisResult) -> None:
         """更新状态文件"""
@@ -183,14 +101,14 @@ class EchoMind:
                 - 下一步建议: {result.advice}
                 """)
 
-    def _append_event(self, slug: str, title: str, desc: str, data: Dict) -> None:
+    def _append_event(self, slug: str, title: str, desc: str, data: dict) -> None:
         """追加事件到 events.jsonl"""
         path = self._get_crush_dir(slug) / "events.jsonl"
         with open(path, "a", encoding="utf-8") as f:
             f.write(
                 json.dumps(
                     {
-                        "timestamp": datetime.now().isoformat(),
+                        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                         "title": title,
                         "desc": desc,
                         **data,
@@ -200,7 +118,7 @@ class EchoMind:
                 + "\n"
             )
 
-    def _infer_stage(self, signals: List[str]) -> str:
+    def _infer_stage(self, signals: list[str]) -> str:
         """根据信号推断阶段"""
         if not signals or signals == ["暂无明确信号"]:
             return "认识期"
@@ -208,7 +126,7 @@ class EchoMind:
             return "暧昧期"
         return "认识期"
 
-    def _generate_advice(self, stage: str, signals: List[str]) -> str:
+    def _generate_advice(self, stage: str) -> str:
         """生成建议"""
         advice_map = {
             "认识期": "先多了解对方，找到共同话题，建立舒适的互动节奏。",
@@ -242,7 +160,7 @@ class EchoMind:
     def selfie(self, name: str, mbti: str, pros: str, cons: str) -> dict[str, Any]:
         """创建用户自身档案"""
         slug = self._generate_slug(name)
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
 
         profile = {
             "name": name,
@@ -293,10 +211,10 @@ class EchoMind:
             traits=traits,
             attraction_tips=attraction_tips,
             notes=notes,
-            created_at=datetime.now().isoformat(),
+            created_at=datetime.now(tz=timezone.utc).isoformat(),
         )
 
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         # 写入 profile.md
         with open(path / "profile.md", "w", encoding="utf-8") as f:
             f.write(
@@ -421,14 +339,14 @@ class EchoMind:
 
         return profile
 
-    def analyze(self, name: str, context: Optional[str] = None) -> AnalysisResult:
+    def analyze(self, name: str, ai_reply_message) -> AnalysisResult:
         """
         解读信号，判断当前阶段
-        对应命令: /simp analyze [描述]
+        根据ai回复，更新部分结果
 
         Args:
-            slug: 心上人的 slug
-            context: 可选的情境描述（聊天记录、近期互动等）
+            name: 心上人的 name
+            ai_reply_message: ai给出的回复
 
         Returns:
             AnalysisResult: 分析结果
@@ -440,30 +358,45 @@ class EchoMind:
         path = self._get_crush_dir(slug)
         if not path.exists():
             raise ValueError(f"未找到档案: {slug}，请先运行 create()")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"analysis_{slug}_{timestamp}.json"
+        filepath = os.path.join(path, filename)
 
-        # 读取现有档案
-        profile = self._load_profile(slug)
+        parsed = parse_json_from_text(ai_reply_message)
+        record = {
+            "timestamp": timestamp,
+            "persona_name": name,
+            "subtext": parsed.get("subtext", ""),
+            "plan": parsed.get("plan", ""),
+            "raw_response": ai_reply_message,
+        }
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(record, f, ensure_ascii=False, indent=2)
+            print(f"[Analyze] 分析结果已保存: {filepath}")
+        except Exception as e:
+            print(f"[Analyze] 保存文件失败: {e}")
+            return
 
-        # TODO: 这里应该调用 LLM 进行实际分析
-        # 当前为示例实现
-        signals = (
-            ["对方主动发起对话"] if context and "主动" in context else ["暂无明确信号"]
-        )
+        # TODO 读取现有档案 state.json, profile.json, personas.json进行更新
+        # with open(path/"state.json", "r", encoding="utf-8") as f:
+        #     state = json.load(f)
+
+
+        signals = ["暂无明确信号"]
         stage = self._infer_stage(signals)
 
         result = AnalysisResult(
             stage=stage,
             signals=signals,
             score=50 if stage == "暧昧期" else 30,
-            advice=self._generate_advice(stage, signals),
+            advice=self._generate_advice(stage),
         )
 
         # 更新 state.md
         self._update_state(slug, result)
 
         # 记录事件
-        now = datetime.now()
-        now = now.strftime("%Y-%m-%d")
         self._append_event(
             slug,
             "analysis",
@@ -529,7 +462,7 @@ class EchoMind:
 
         return msg
 
-    def confess(self, slug: str) -> Dict[str, Any]:
+    def confess(self, slug: str) -> dict[str, Any]:
         """
         表白策略 + 表白词定制
         对应命令: /simp confess
@@ -538,7 +471,7 @@ class EchoMind:
             slug: 心上人的 slug
 
         Returns:
-            Dict: 包含策略和表白词
+            dict: 包含策略和表白词
 
         Example:
             >>> result = skill.confess("xiaomei")
@@ -570,7 +503,7 @@ class EchoMind:
 
         return result
 
-    def crisis(self, slug: str, situation: str) -> Dict[str, Any]:
+    def crisis(self, slug: str, situation: str) -> dict[str, Any]:
         """
         危机处理
         对应命令: /simp crisis <情况>
@@ -580,7 +513,7 @@ class EchoMind:
             situation: 危机情况描述
 
         Returns:
-            Dict: 包含危机类型、分析和应对方案
+            dict: 包含危机类型、分析和应对方案
 
         Example:
             >>> result = skill.crisis("xiaomei", "突然不回我消息了")
@@ -629,7 +562,7 @@ class EchoMind:
 
         return result
 
-    def progress(self, slug: str) -> Dict[str, Any]:
+    def progress(self, slug: str) -> dict[str, Any]:
         """
         进度评估与下一步建议
         对应命令: /simp progress
@@ -638,7 +571,7 @@ class EchoMind:
             slug: 心上人的 slug
 
         Returns:
-            Dict: 包含当前进度、分数和下一步建议
+            dict: 包含当前进度、分数和下一步建议
 
         Example:
             >>> result = skill.progress("xiaomei")
@@ -673,7 +606,7 @@ class EchoMind:
 
         return result
 
-    def quit(self, slug: str) -> Dict[str, Any]:
+    def quit(self, slug: str) -> dict[str, Any]:
         """
         放弃判断器
         对应命令: /simp quit
@@ -682,7 +615,7 @@ class EchoMind:
             slug: 心上人的 slug
 
         Returns:
-            Dict: 包含分析和建议
+            dict: 包含分析和建议
 
         Example:
             >>> result = skill.quit("xiaomei")
@@ -737,7 +670,7 @@ class EchoMind:
 
         return f"已切换到{ {'sweet':'纯情','strategic':'策略','hybrid':'混合'}.get(style, style) }模式"
 
-    def list_all(self) -> List[str]:
+    def list_all(self) -> list[str]:
         """列出所有心上人档案"""
         return [
             d.name

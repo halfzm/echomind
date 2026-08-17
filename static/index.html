@@ -1928,7 +1928,7 @@
             };
 
             const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
-            const ws = new WebSocket(`${wsProtocol}://${window.location.host}/analyze`);
+            const ws = new WebSocket(`${wsProtocol}://${window.location.host}/analyze?persona_name=${p.name}`);
 
             let initSent = false;
             let inputSent = false;

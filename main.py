@@ -2,10 +2,10 @@ import os
 import json
 import uuid
 import base64
-import shutil
 import asyncio
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Optional, Any
+from datetime import datetime, timezone
 
 import websockets
 from pydantic import BaseModel
@@ -23,8 +23,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from echo_mind import EchoMind
-from utils import load_personas_from_file, save_personas_to_file
 from models import SelfieRequest, TimelineEvent, ChatMessage, Attachment, Persona
+from utils import load_personas_from_file, save_personas_to_file, parse_json_from_text
+
 
 app = FastAPI()
 skill = EchoMind()
@@ -108,7 +109,7 @@ async def get_persona():
 
 
 @app.post("/persona")
-async def create_persona(persona_data: Dict[str, Any]):
+async def create_persona(persona_data: dict[str, Any]):
     """
     根据填写信息创建档案，如果有聊天记录则分析聊天记录
     """
@@ -225,7 +226,7 @@ async def create_persona(persona_data: Dict[str, Any]):
 
 
 @app.put("/persona/{persona_id}")
-async def update_persona(persona_id: str, updated_data: Dict[str, Any]):
+async def update_persona(persona_id: str, updated_data: dict[str, Any]):
     """更新指定ID的关系人信息"""
     personas = load_personas_from_file(PERSONAS_FILE)
 
@@ -307,7 +308,7 @@ async def websocket_proxy(websocket: WebSocket):
             while True:
                 msg = await websocket.receive_text()
                 data = json.loads(msg)
-                print(data)  # 探针--输出消息
+                # print(data)  # 探针--输出消息
 
                 # 拦截 input.append 事件，注入 system 消息
                 if data.get("type") == "input.append":
@@ -361,10 +362,19 @@ async def analyze_proxy(websocket: WebSocket):
     分析的话应该是不知道怎么办的意思？这是什么信号，我应该怎么处理？
     应该让AI直接给出答复
 
+    累积 AI 流式回复，在流结束后保存完整分析结果到本地文件
+
     同时要更新状态
     """
 
     await websocket.accept()
+
+    # 前端连接时带上 persona_id：ws://host/analyze?persona_name=test
+    persona_name = websocket.query_params.get("persona_name")
+
+    # 累积 AI 返回的文本片段
+    response_chunks: list[str] = []
+    saved = False  # 防重入标记
 
     try:
         # 连接外部 WebSocket
@@ -404,11 +414,41 @@ async def analyze_proxy(websocket: WebSocket):
 
     async def forward_to_frontend():
         """接收外部 API 消息 -> 转发给前端"""
+        nonlocal saved
         try:
             async for msg in external_ws:
+                # 1. 实时转发给前端（不阻塞）
                 await websocket.send_text(msg)
+
+                # 2. 解析并累积 AI 文本
+                try:
+                    msg_data = json.loads(msg)
+                    msg_type = msg_data.get("type")
+
+                    if (
+                        msg_type == "response.output.delta"
+                        and msg_data.get("kind") == "text"
+                    ):
+                        chunk = msg_data.get("text", "")
+                        if chunk:
+                            response_chunks.append(chunk)
+
+                    elif msg_type in ("response.done", "session.closed"):
+                        if not saved and response_chunks:
+                            await _persist_analysis()
+                            saved = True
+                except Exception as e:
+                    print(f"[Analyze] 处理外部消息时出错: {e}")
         except (websockets.ConnectionClosed, WebSocketDisconnect):
             pass
+
+    # --------------------- 保存分析结果 ---------------------
+    async def _persist_analysis():
+        full_text = "".join(response_chunks)
+        if not full_text.strip():
+            return
+        
+        skill.analyze(persona_name, full_text)
 
     # 并发执行两个转发任务
     try:
@@ -416,15 +456,24 @@ async def analyze_proxy(websocket: WebSocket):
     except Exception as e:
         print(f"代理异常: {e}")
     finally:
+        # 兜底：若连接异常断开且尚未保存，强制归档
+        if not saved and response_chunks:
+            try:
+                await _persist_analysis()
+                saved = True
+            except Exception as e:
+                print(f"[Analyze] 最终兜底保存失败: {e}")
+
         # 清理连接
-        try:
-            await external_ws.close()
-        except Exception as e:
-            print(f"关闭代理 external_ws {e}")
+        if external_ws is not None:
+            try:
+                await external_ws.close()
+            except Exception as e:
+                print(f"[Analyze] 关闭 external_ws 异常: {e}")
         try:
             await websocket.close()
         except Exception as e:
-            print(f"关闭代理 websocket {e}")
+            print(f"[Analyze] 关闭 websocket 异常: {e}")
 
 
 @app.get("/timeline")
