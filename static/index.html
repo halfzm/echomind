@@ -452,10 +452,16 @@
                     <div
                         class="light-card rounded-2xl p-4 flex flex-col justify-between border border-stone-200 overflow-y-auto space-y-4">
                         <div>
-                            <div
-                                class="flex items-center space-x-2 text-xs font-bold text-stone-900 border-b border-stone-200 pb-2 mb-3">
-                                <i class="fa-solid fa-heart-pulse text-stone-700"></i>
-                                <span>军师实时情绪 & 侧边诊断</span>
+                            <div class="flex items-center justify-between border-b border-stone-200 pb-2 mb-3">
+                                <div class="flex items-center space-x-2 text-xs font-bold text-stone-900">
+                                    <i class="fa-solid fa-heart-pulse text-stone-700"></i>
+                                    <span>军师实时情绪 & 侧边诊断</span>
+                                </div>
+                                <button onclick="runSimAdvisor()"
+                                    class="px-2.5 py-1 bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg text-[10px] font-semibold shadow-sm transition flex items-center gap-1">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                    诊断
+                                </button>
                             </div>
 
                             <div class="space-y-3" id="simAdvisorBox">
@@ -619,7 +625,7 @@
                             <h3
                                 class="text-xs font-bold text-stone-900 flex items-center space-x-2 border-b border-stone-200 pb-2 mb-3">
                                 <i class="fa-solid fa-flag-checkered text-stone-700"></i>
-                                <span>跨学科作战计划（3阶段推进策略）</span>
+                                <span>跨学科作战计划（阶段推进策略）</span>
                             </h3>
                             <div class="space-y-2.5 text-xs" id="tacticalPlanBox">
                                 <div class="p-3 bg-stone-50 rounded-xl border-l-4 border-stone-800 space-y-1">
@@ -1761,6 +1767,199 @@
             renderSimulatorView();
         }
 
+        // ========== 模拟舱军师诊断（点击按钮触发） ==========
+        let simAdvisorRunning = false;
+
+        async function runSimAdvisor() {
+            if (simAdvisorRunning) return;
+            const p = getActivePersona();
+            if (!p) return;
+
+            // 构建诊断请求消息（将历史对话和人物档案整合为文本）
+            const historyText = p.chatHistory.map(m =>
+                `${m.sender === 'me' ? '我' : p.name}：${m.text || ''}`
+            ).join('\n');
+
+            const query = `
+                【关系人档案】
+                姓名：${p.name}
+                状态：${p.status}
+                MBTI：${p.mbti}
+                性格描述：${p.personalityDesc || '无'}
+
+                【对话历史】
+                ${historyText || '（暂无对话）'}
+
+                【任务】
+                请根据以上信息，分析当前关系状态和对方心理防御，并给出破冰建议和可选话术。
+                以严格的 JSON 格式输出，包含以下字段：
+                - defensiveLevel: 数值 0~100（表示防御程度，越高越防御）
+                - defensiveStatus: 简短描述（如“偏放松 (安全区)”）
+                - advisorTip: 一条破冰/提升关系的建议
+                - suggestions: 至少3条可点击填充的话术（字符串数组）
+                只输出 JSON，不要附加其他文字。
+                `;
+
+            // 显示加载状态
+            document.getElementById('simDefensiveStatus').textContent = '分析中...';
+            document.getElementById('simDefensiveBar').style.width = '50%';
+            document.getElementById('simAdvisorTip').textContent = '正在调用军师大脑...';
+            document.getElementById('simSuggestions').innerHTML =
+                `<div class="text-center text-stone-400 text-xs py-2"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>加载中</div>`;
+
+            simAdvisorRunning = true;
+
+            try {
+                // 复用模拟仓聊天 /chat WebSocket，但构建专属消息格式
+                const messages = [
+                    { role: 'system', content: '你是一位资深情感关系专家，擅长基于对话历史给出精准的心理分析和战术建议。' },
+                    { role: 'user', content: query }
+                ];
+
+                const wsBody = {
+                    messages,
+                    streaming: true,
+                    generation: {
+                        max_new_tokens: 1024,
+                        do_sample: true,
+                        length_penalty: 1.1,
+                    },
+                    image: { max_slice_nums: 0 },
+                    omni_mode: false,
+                };
+
+                const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+                const ws = new WebSocket(`${wsProtocol}://${window.location.host}/chat`);
+
+                let initSent = false, inputSent = false, closeSent = false;
+                let fullReply = '';
+                let finished = false;
+                let timeoutId = null;
+
+                const sendInit = () => {
+                    if (initSent || ws.readyState !== WebSocket.OPEN) return;
+                    initSent = true;
+                    ws.send(JSON.stringify({ type: 'session.init', payload: {} }));
+                };
+                const sendInput = () => {
+                    if (inputSent || ws.readyState !== WebSocket.OPEN) return;
+                    inputSent = true;
+                    ws.send(JSON.stringify({ type: 'input.append', input: wsBody }));
+                };
+                const sendClose = (reason = 'turn_done') => {
+                    if (closeSent || ws.readyState !== WebSocket.OPEN) return;
+                    closeSent = true;
+                    ws.send(JSON.stringify({ type: 'session.close', reason }));
+                };
+
+                const finish = (errorMsg = null) => {
+                    if (finished) return;
+                    finished = true;
+                    if (timeoutId) clearTimeout(timeoutId);
+                    simAdvisorRunning = false;
+                    try { ws.close(); } catch (_) { }
+
+                    if (errorMsg) {
+                        document.getElementById('simDefensiveStatus').textContent = '❌ 诊断失败';
+                        document.getElementById('simAdvisorTip').textContent = errorMsg;
+                        document.getElementById('simSuggestions').innerHTML = '';
+                        return;
+                    }
+
+                    // 解析 JSON
+                    let data = null;
+                    try {
+                        const jsonStr = fullReply.trim();
+                        const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                        const clean = codeBlockMatch ? codeBlockMatch[1].trim() : jsonStr;
+                        data = JSON.parse(clean);
+                    } catch (e) {
+                        console.warn('解析诊断 JSON 失败，尝试降级提取', e);
+                        // 降级：从文本中提取关键词
+                        data = extractDiagnosticFromText(fullReply);
+                    }
+
+                    if (data) {
+                        // 更新 UI
+                        const level = Math.min(100, Math.max(0, parseInt(data.defensiveLevel) || 50));
+                        document.getElementById('simDefensiveStatus').textContent = data.defensiveStatus || '中等防御';
+                        document.getElementById('simDefensiveBar').style.width = level + '%';
+                        document.getElementById('simAdvisorTip').textContent = data.advisorTip || '暂无建议';
+
+                        const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+                        const box = document.getElementById('simSuggestions');
+                        if (suggestions.length) {
+                            box.innerHTML = suggestions.map(s => `
+                        <div onclick="applySuggestion('${s.replace(/"/g, '&quot;')}')" 
+                             class="p-2.5 bg-stone-50 hover:bg-white text-stone-800 rounded-xl cursor-pointer transition border border-stone-200/80 hover:border-stone-400 text-[11px] leading-relaxed shadow-sm">
+                            ${s}
+                        </div>
+                    `).join('');
+                        } else {
+                            box.innerHTML = `<div class="text-stone-400 text-xs py-2">暂无推荐话术</div>`;
+                        }
+                    }
+                };
+
+                ws.onopen = () => sendInit();
+                ws.onmessage = (event) => {
+                    let msg;
+                    try { msg = JSON.parse(event.data); } catch (e) { return; }
+                    if (msg.type === 'session.queue_done') sendInit();
+                    else if (msg.type === 'session.created') sendInput();
+                    else if (msg.type === 'response.output.delta') {
+                        if (msg.kind === 'text' && msg.text) {
+                            fullReply += msg.text;
+                        }
+                    } else if (msg.type === 'response.done') {
+                        sendClose();
+                        finish();
+                    } else if (msg.type === 'session.closed') {
+                        const reason = msg.reason || '';
+                        const diag = msg.diagnostic?.message || msg.error?.message || '';
+                        if (reason && !['turn_done', 'client_closed'].includes(reason)) {
+                            finish(diag || reason);
+                        } else {
+                            if (!fullReply) finish('未收到分析结果');
+                            else finish();
+                        }
+                    } else if (msg.type === 'error') {
+                        finish(msg.error?.message || '未知错误');
+                    }
+                };
+                ws.onerror = () => finish('连接错误');
+                ws.onclose = () => { if (!finished && simAdvisorRunning) finish('连接意外关闭'); };
+
+                timeoutId = setTimeout(() => {
+                    if (!finished && simAdvisorRunning) finish('请求超时');
+                }, 60000);
+
+            } catch (err) {
+                simAdvisorRunning = false;
+                document.getElementById('simDefensiveStatus').textContent = '⚠️ 异常';
+                document.getElementById('simAdvisorTip').textContent = err.message;
+            }
+        }
+
+        // 降级提取函数（当 JSON 解析失败时，从文本中提取关键字段）
+        function extractDiagnosticFromText(text) {
+            const result = { defensiveLevel: 50, defensiveStatus: '中等', advisorTip: '', suggestions: [] };
+            // 匹配防御度
+            const levelMatch = text.match(/防御(?:程度|等级|值)[：:]\s*(\d+)/i);
+            if (levelMatch) result.defensiveLevel = parseInt(levelMatch[1]);
+            const statusMatch = text.match(/防御状态[：:]\s*(.+?)(?=\n|$)/i);
+            if (statusMatch) result.defensiveStatus = statusMatch[1].trim();
+            const tipMatch = text.match(/(?:破冰建议|建议)[：:]\s*(.+?)(?=\n|$)/i);
+            if (tipMatch) result.advisorTip = tipMatch[1].trim();
+            // 提取话术（以序号或引号开头）
+            const suggestionMatches = text.match(/(?:话术|建议|选项)[：:]\s*([\s\S]*?)(?=\n\n|$)/i);
+            if (suggestionMatches) {
+                const lines = suggestionMatches[1].split(/\n/).filter(s => s.trim());
+                result.suggestions = lines.map(s => s.replace(/^[\d.、\s"“”]+/, '').trim()).filter(s => s);
+            }
+            return result;
+        }
+
         function renderDecisionView() {
             const p = getActivePersona();
             document.getElementById('decisionPersonaName').innerText = `分析对象：${p.name}`;
@@ -1832,6 +2031,7 @@
             const systemPrompt = `你是一位资深情感关系分析师、微表情与语音语调解读专家，精通进化心理学、依恋理论和行为经济学。
                 用户正在分析他与"${persona.name}"的关系进展（当前阶段：${persona.status}，MBTI：${persona.mbti}）。
                 用户上传了多模态聊天记录（可能包含文本、聊天截图、语音消息等）。
+                对于聊天截图，右边的消息是用户自己发送的。
 
                 请严格只输出 JSON，不要包含 markdown 代码块标记（如 \`\`\`json），也不要有任何其他解释性文字。
 
