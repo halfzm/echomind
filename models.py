@@ -116,25 +116,6 @@ class CrushProfile:
 
 
 @dataclass
-class State:
-    """表示心上人的动态状态，对应 state.md 文件。"""
-
-    current_stage: str = "破冰期"
-    signal_score: Optional[int] = None
-    last_signal_score: Optional[int] = None
-    score_trend: str = "stable"
-    recommended_mode: str = "混合"  # 例如 "混合" / "纯情" / "策略"
-    last_updated: str = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc).isoformat()
-    )
-    milestones_done: int = 0
-    status_summary: str = ""  # "当前状态（一句话）" 内容
-    recent_signals: list[str] = field(default_factory=list)  # 最近信号列表
-    strategy_direction: str = ""  # "当前策略方向" 内容
-    next_step_advice: str = ""  # "下一步建议" 内容
-
-
-@dataclass
 class Strategy:
     current_stage: str = ""  # ## 当前阶段
     recommended_mode: str = ""  # ## 推荐模式
@@ -147,6 +128,6 @@ class AnalysisResult:
     """分析结果"""
 
     stage: str  # 当前阶段: 认识期/暧昧期/热恋期/危机期
-    signals: list[str]  # 识别到的信号
+    signals: List[str]  # 识别到的信号
     score: int  # 感情温度 (0-100)
     advice: str  # 建议

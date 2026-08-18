@@ -5,6 +5,7 @@ import base64
 import asyncio
 from typing import Any
 from pathlib import Path
+from typing import List, Dict
 
 import websockets
 from fastapi import FastAPI, Query
@@ -93,7 +94,7 @@ async def get_persona():
 
 
 @app.post("/persona")
-async def create_persona(persona_data: dict[str, Any]):
+async def create_persona(persona_data: Dict[str, Any]):
     """
     根据填写信息创建档案，如果有聊天记录则分析聊天记录
     """
@@ -210,7 +211,7 @@ async def create_persona(persona_data: dict[str, Any]):
 
 
 @app.put("/persona/{persona_id}")
-async def update_persona(persona_id: str, updated_data: dict[str, Any]):
+async def update_persona(persona_id: str, updated_data: Dict[str, Any]):
     """更新指定ID的关系人信息"""
     personas = load_personas_from_file(PERSONAS_FILE)
 
@@ -358,7 +359,7 @@ async def analyze_proxy(websocket: WebSocket):
     persona_name = websocket.query_params.get("persona_name")
 
     # 累积 AI 返回的文本片段
-    response_chunks: list[str] = []
+    response_chunks: List[str] = []
     saved = False  # 防重入标记
 
     try:

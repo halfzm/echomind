@@ -2,7 +2,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import  Any
+from typing import Any, List, Dict
 from dataclasses import asdict
 from datetime import datetime, timezone
 
@@ -72,7 +72,7 @@ class EchoMind:
                 + "\n"
             )
 
-    def _infer_stage(self, signals: list[str]) -> str:
+    def _infer_stage(self, signals: List[str]) -> str:
         """根据信号推断阶段"""
         if not signals or signals == ["暂无明确信号"]:
             return "认识期"
@@ -95,7 +95,7 @@ class EchoMind:
     def get_slug(self, name):
         return self._generate_slug(name=name)
 
-    def selfie(self, name: str, mbti: str, pros: str, cons: str) -> dict[str, Any]:
+    def selfie(self, name: str, mbti: str, pros: str, cons: str) -> Dict[str, Any]:
         """创建用户自身档案"""
         slug = self._generate_slug(name)
         now = datetime.now(tz=timezone.utc)
@@ -271,7 +271,7 @@ class EchoMind:
         timeline_data = [d.strip() for d in timelines if d.strip()]
         return timeline_data
 
-    def edit_timeline(self, name: str, title: str, desc: str, data: dict):
+    def edit_timeline(self, name: str, title: str, desc: str, data: Dict):
         slug = self._generate_slug(name)
         self._append_event(slug, title, desc, data)
 
