@@ -6,6 +6,7 @@ import asyncio
 from typing import Any
 from pathlib import Path
 from typing import List, Dict
+from dataclasses import asdict
 
 import websockets
 from fastapi import FastAPI, Query
@@ -205,7 +206,7 @@ async def create_persona(persona_data: Dict[str, Any]):
         attachments=processed_attachments,
     )
 
-    personas.append(new_persona.model_dump())
+    personas.append(asdict(new_persona))
     save_personas_to_file(personas, PERSONAS_FILE)
     return {"persona": new_persona}
 

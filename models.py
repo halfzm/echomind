@@ -3,27 +3,29 @@
 """
 
 from enum import Enum
-from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 
-class SelfieRequest(BaseModel):
+@dataclass
+class SelfieRequest:
     name: str
     mbti: str
     strengths: str
     weaknesses: str
 
 
-class TimelineEvent(BaseModel):
+@dataclass
+class TimelineEvent:
     name: str  # 关系人姓名
     title: str  # 事件标题
     desc: Optional[str] = ""  # 详细信息，可选
     data: Optional[str] = "里程碑"  # 标签，默认里程碑
 
 
-class ChatMessage(BaseModel):
+@dataclass
+class ChatMessage:
     sender: str
     text: str
     image: Optional[str] = None
@@ -31,13 +33,15 @@ class ChatMessage(BaseModel):
     file: Optional[str] = None
 
 
-class Attachment(BaseModel):
+@dataclass
+class Attachment:
     name: str
     type: str
     data: str  # 文本内容或 DataURL
 
 
-class Persona(BaseModel):
+@dataclass
+class Persona:
     id: str
     name: str
     avatar: str
@@ -57,12 +61,23 @@ class Persona(BaseModel):
 
     # 原有字段（保留兼容）
     personalityDesc: Optional[str] = ""  # 可作为 traits 或 notes 的组合
-    tags: List[str] = []
+    tags: List[str] = None
     heatScore: int = 0
     defensiveLevel: int = 100
-    timeline: List[Dict[str, Any]] = []
-    chatHistory: List[Dict[str, Any]] = []
-    attachments: List[Dict[str, Any]] = []  # 处理后的附件（文件名）
+    timeline: List[Dict[str, Any]] = None
+    chatHistory: List[Dict[str, Any]] = None
+    attachments: List[Dict[str, Any]] = None  # 处理后的附件（文件名）
+
+    def __post_init__(self):
+        """dataclass可变列表默认值坑：不能直接写 =[]，在__post_init__初始化"""
+        if self.tags is None:
+            self.tags = []
+        if self.timeline is None:
+            self.timeline = []
+        if self.chatHistory is None:
+            self.chatHistory = []
+        if self.attachments is None:
+            self.attachments = []
 
 
 # ---------- 枚举定义 ----------
