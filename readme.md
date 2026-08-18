@@ -16,8 +16,14 @@ python main.py
 - static/index.html 前端页面
 ```
 
+# 参考项目
+- [MiniCPN-v](https://github.com/OpenBMB/MiniCPM-V)
+- [MiniCPM-o-Demo](https://github.com/OpenBMB/MiniCPM-o-Demo)
+
 
 ## MiniCPM模型测试
+> https://minicpmo45.modelbest.cn/turnbased
+
 如果上传多个附件，只会处理最后一个
 比如上传两张图片，问图片中是什么内容，只会分析最后一张图片
 比如上传一张图片，一个音频，问图片中有什么信息，音频中有什么信息，只会分析音频中的内容且会自己补充不存在的内容
