@@ -3,29 +3,18 @@ import json
 import uuid
 import base64
 import asyncio
+from typing import Any
 from pathlib import Path
-from typing import Optional, Any
-from datetime import datetime, timezone
 
 import websockets
-from pydantic import BaseModel
-from fastapi import (
-    FastAPI,
-    WebSocket,
-    WebSocketDisconnect,
-    HTTPException,
-    UploadFile,
-    File,
-    Form,
-    Query,
-)
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, Query
+from fastapi import WebSocket,WebSocketDisconnect,HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from echo_mind import EchoMind
-from models import SelfieRequest, TimelineEvent, ChatMessage, Attachment, Persona
-from utils import load_personas_from_file, save_personas_to_file, parse_json_from_text
-
+from models import SelfieRequest, TimelineEvent, Persona
+from utils import load_personas_from_file, save_personas_to_file
 
 app = FastAPI()
 skill = EchoMind()
@@ -37,10 +26,6 @@ PERSONAS_FILE = os.path.join(DATA_DIR, "personas.json")
 # MiniCPM-o API 地址
 API_HOST = "minicpmo45.modelbest.cn"
 API_WS_URL = f"wss://{API_HOST}/v1/realtime?mode=chat"
-
-# 启动时加载 Skill 指令
-# SYSTEM_INSTRUCTION = load_skill_instructions()
-# SYSTEM_INSTRUCTION = "在每次回答的最后面加上一个喵字"
 
 # 挂载静态文件目录，URL 前缀为 /static
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -63,7 +48,6 @@ async def get_turnbased():
 @app.get("/selfie")
 async def get_selfie():
     """获取当前用户的档案，若不存在则返回空"""
-    # 查找 profile 目录下的所有 json 文件
     if not DATA_DIR.exists():
         return {"status": "not_found", "profile": None}
     json_files = f"{DATA_DIR}/selfie.json"
@@ -330,6 +314,7 @@ async def websocket_proxy(websocket: WebSocket):
         """接收外部 API 消息 -> 转发给前端"""
         try:
             async for msg in external_ws:
+                # print(msg)
                 await websocket.send_text(msg)
         except (websockets.ConnectionClosed, WebSocketDisconnect):
             pass
@@ -401,9 +386,6 @@ async def analyze_proxy(websocket: WebSocket):
                     input_data = data.get("input", {})
                     messages = input_data.get("messages", [])
                     if messages is not None:
-                        # 在最前面插入 system 消息
-                        # system_msg = {"role": "system", "content": SYSTEM_INSTRUCTION}
-                        # messages.insert(0, system_msg)
                         input_data["messages"] = messages
                         data["input"] = input_data
 
@@ -447,7 +429,7 @@ async def analyze_proxy(websocket: WebSocket):
         full_text = "".join(response_chunks)
         if not full_text.strip():
             return
-        
+
         skill.analyze(persona_name, full_text)
 
     # 并发执行两个转发任务
