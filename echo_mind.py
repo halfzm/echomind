@@ -90,7 +90,6 @@ class EchoMind:
         }
         return advice_map.get(stage, "保持真诚，慢慢来。")
 
-
     # ---------- 公共 API 方法 ----------
     def get_slug(self, name):
         return self._generate_slug(name=name)
@@ -217,7 +216,7 @@ class EchoMind:
             raise ValueError(f"未找到档案: {slug}，请先运行 create()")
         timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"analysis_{timestamp}.json"
-        filepath = path/"analysis"/filename
+        filepath = path / "analysis" / filename
 
         parsed = parse_json_from_text(ai_reply_message)
         record = {
@@ -256,13 +255,11 @@ class EchoMind:
         self._append_event(
             slug,
             "analysis",
-            "解读信号，判断当前阶段",
+            "解读聊天记录",
             {"stage": result.stage, "signals": result.signals, "score": result.score},
         )
 
         return result
-
-
 
     def get_timeline(self, name: str):
         slug = self._generate_slug(name)

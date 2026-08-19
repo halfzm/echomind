@@ -2285,10 +2285,12 @@
             const subtextContainer = document.getElementById('subtextContainer');
             const tacticalPlanBox = document.getElementById('tacticalPlanBox');
 
+            // console.log('原始返回文本:', text); // 调试用
+
             let data = null;
             let parseError = null;
 
-            // 1. 尝试提取并解析 JSON（兼容模型偶尔包裹的 markdown 代码块）
+            // 1. 尝试提取并解析 JSON（兼容 markdown 包裹）
             try {
                 let jsonStr = text.trim();
                 const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -2298,10 +2300,28 @@
                 data = JSON.parse(jsonStr);
             } catch (e) {
                 parseError = e;
+                console.warn('JSON解析失败，将进入降级解析', e);
             }
 
-            // 2. JSON 解析成功且包含所需字段
+            // 2. 成功解析 JSON
             if (data && (data.subtext || data.plan)) {
+                // ---- 增强处理：plan 可能是字符串形式的数组 ----
+                let planData = data.plan;
+                if (typeof planData === 'string') {
+                    try {
+                        const parsed = JSON.parse(planData);
+                        if (Array.isArray(parsed)) {
+                            planData = parsed;
+                            console.log('plan 字符串成功解析为数组');
+                        } else {
+                            console.warn('plan 字符串解析结果非数组，保留为字符串');
+                        }
+                    } catch (e) {
+                        console.warn('plan 字符串解析为数组失败，将按普通字符串处理', e);
+                    }
+                }
+                // 若 planData 仍为字符串或 null/undefined，后续按字符串渲染；若为数组则按数组渲染
+
                 // ===== 渲染 subtext（潜台词诊断）=====
                 if (data.subtext) {
                     const subtext = String(data.subtext);
@@ -2345,12 +2365,12 @@
                     subtextContainer.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">未返回潜台词诊断内容</div>`;
                 }
 
-                // ===== 渲染 plan（跨学科作战计划）=====
-                if (data.plan) {
+                // ===== 渲染 plan（跨学科作战计划），使用处理后的 planData =====
+                if (planData) {
                     const colors = ['border-stone-800', 'border-stone-500', 'border-rose-500', 'border-sky-500', 'border-emerald-500'];
 
-                    if (Array.isArray(data.plan)) {
-                        tacticalPlanBox.innerHTML = data.plan.map((item, idx) => {
+                    if (Array.isArray(planData) && planData.length > 0) {
+                        tacticalPlanBox.innerHTML = planData.map((item, idx) => {
                             const color = colors[idx % colors.length];
                             const stage = item.stage || item.Stage || `Stage ${idx + 1}`;
                             const title = item.title || item.Title || '行动建议';
@@ -2366,9 +2386,11 @@
                         </div>
                     `;
                         }).join('');
+                    } else if (Array.isArray(planData) && planData.length === 0) {
+                        tacticalPlanBox.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">返回作战计划为空，请重试</div>`;
                     } else {
-                        // plan 为字符串，按 Stage 分割
-                        const planStr = String(data.plan);
+                        // planData 为字符串（或非数组），按原有分段逻辑渲染
+                        const planStr = String(planData);
                         const stageBlocks = planStr.split(/\n(?=Stage\s*\d[：:.]|第\s*\d\s*天[：:.]|Stage\s*\d\s*)/i).filter(s => s.trim());
 
                         if (stageBlocks.length >= 2) {
@@ -2401,11 +2423,11 @@
                     tacticalPlanBox.innerHTML = `<div class="text-center text-stone-400 text-xs py-4">未返回作战计划内容</div>`;
                 }
 
-                return;
+                return; // 正常流程结束
             }
 
             // 3. JSON 解析失败或字段缺失 → Fallback：降级为文本解析
-            console.warn('JSON 解析失败或字段缺失，降级为文本解析:', parseError);
+            console.warn('进入降级解析模式', parseError);
 
             let subtext = '';
             let tactical = '';
