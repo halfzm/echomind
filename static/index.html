@@ -1194,33 +1194,69 @@
         }
 
         function renderPersonasView() {
-            document.getElementById('personaCountBadge').innerText = `${state.personas.length} 位关系对象`;
             const grid = document.getElementById('personasGrid');
-            grid.innerHTML = state.personas.map(p => {
-                const isSelected = p.id === state.activePersonaId;
-                return `
-                    <div onclick="changeActivePersona('${p.id}')" class="light-card-interactive p-5 rounded-2xl cursor-pointer border ${isSelected ? 'border-neutral-900 ring-1 ring-neutral-900' : 'border-stone-200'} relative overflow-hidden">
-                        <div class="flex items-start justify-between">
-                            <div class="flex items-center space-x-3">
-                                <img src="${p.avatar}" class="w-12 h-12 rounded-full object-cover ring-2 ring-stone-200">
-                                <div>
-                                    <h3 class="font-bold text-sm text-stone-900 flex items-center gap-1.5">
-                                        <span>${p.name}</span>
-                                        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}">${p.status}</span>
-                                    </h3>
-                                    <p class="text-xs text-stone-500 font-semibold mt-0.5">MBTI: ${p.mbti}</p>
-                                </div>
-                            </div>
-                        </div>
+            grid.innerHTML = ''; // 清空
 
-                        <p class="text-xs text-stone-600 mt-3 line-clamp-2">${p.personalityDesc}</p>
+            state.personas.forEach(p => {
+                const card = document.createElement('div');
+                card.className = `light-card-interactive p-5 rounded-2xl cursor-pointer border ${p.id === state.activePersonaId ? 'border-neutral-900 ring-1 ring-neutral-900' : 'border-stone-200'} relative overflow-hidden`;
+                card.dataset.personaId = p.id; // 事件委托
+                card.addEventListener('click', () => changeActivePersona(p.id));
 
-                        <div class="flex flex-wrap gap-1.5 mt-3">
-                            ${p.tags.map(t => `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md border border-stone-200">#${t}</span>`).join('')}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                // 头像 + 名称 + 状态
+                const top = document.createElement('div');
+                top.className = 'flex items-start justify-between';
+
+                const left = document.createElement('div');
+                left.className = 'flex items-center space-x-3';
+
+                const img = document.createElement('img');
+                img.src = p.avatar;
+                img.className = 'w-12 h-12 rounded-full object-cover ring-2 ring-stone-200';
+                left.appendChild(img);
+
+                const nameDiv = document.createElement('div');
+                const name = document.createElement('h3');
+                name.className = 'font-bold text-sm text-stone-900 flex items-center gap-1.5';
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = p.name;
+                name.appendChild(nameSpan);
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = `text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}`;
+                statusSpan.textContent = p.status;
+                name.appendChild(statusSpan);
+                nameDiv.appendChild(name);
+
+                const mbti = document.createElement('p');
+                mbti.className = 'text-xs text-stone-500 font-semibold mt-0.5';
+                mbti.textContent = `MBTI: ${p.mbti}`;
+                nameDiv.appendChild(mbti);
+                left.appendChild(nameDiv);
+                top.appendChild(left);
+                card.appendChild(top);
+
+                // 描述
+                const desc = document.createElement('p');
+                desc.className = 'text-xs text-stone-600 mt-3 line-clamp-2';
+                desc.textContent = p.personalityDesc;
+                card.appendChild(desc);
+
+                // 标签
+                const tagContainer = document.createElement('div');
+                tagContainer.className = 'flex flex-wrap gap-1.5 mt-3';
+                p.tags.forEach(t => {
+                    const tag = document.createElement('span');
+                    tag.className = 'text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md border border-stone-200';
+                    tag.textContent = `#${t}`;
+                    tagContainer.appendChild(tag);
+                });
+                card.appendChild(tagContainer);
+
+                grid.appendChild(card);
+            });
+
+            document.getElementById('personaCountBadge').textContent = `${state.personas.length} 位关系对象`;
         }
 
         function getStatusBadgeStyle(status) {
@@ -1235,114 +1271,137 @@
         function renderActivePersonaDetails() {
             const p = getActivePersona();
             const panel = document.getElementById('personaDetailPanel');
-            panel.innerHTML = `
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-200 pb-4">
-            <div class="flex items-center space-x-4">
-                <img src="${p.avatar}" class="w-16 h-16 rounded-2xl object-cover ring-2 ring-stone-200 shadow-sm">
-                <div>
-                    <h3 class="text-lg font-bold text-stone-900 flex items-center gap-2">
-                        <span id="displayPersonaName">${p.name}</span>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}" id="displayPersonaStatus">${p.status}</span>
-                    </h3>
-                    <p class="text-xs text-stone-500">已导入 ${p.chatHistory.length} 条对话与多模态记录分析</p>
-                </div>
-            </div>
-            <button onclick="toggleEditPersona()" id="editToggleBtn" 
-                    class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span id="editToggleText">编辑档案</span>
-            </button>
-        </div>
+            panel.innerHTML = ''; // 清空
 
-        <!-- 展示/编辑区域 -->
-        <div id="personaDetailContent">
-            <!-- 由 renderPersonaDetailContent 填充 -->
-        </div>
-    `;
-            renderPersonaDetailContent(false); // false = 只读模式
+            // 顶部容器
+            const header = document.createElement('div');
+            header.className = 'flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-200 pb-4';
+
+            const left = document.createElement('div');
+            left.className = 'flex items-center space-x-4';
+
+            const img = document.createElement('img');
+            img.src = p.avatar;
+            img.className = 'w-16 h-16 rounded-2xl object-cover ring-2 ring-stone-200 shadow-sm';
+            left.appendChild(img);
+
+            const info = document.createElement('div');
+            const nameWrap = document.createElement('h3');
+            nameWrap.className = 'text-lg font-bold text-stone-900 flex items-center gap-2';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = p.name;
+            nameSpan.id = 'displayPersonaName';
+            nameWrap.appendChild(nameSpan);
+
+            const statusSpan = document.createElement('span');
+            statusSpan.className = `text-xs px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}`;
+            statusSpan.textContent = p.status;
+            statusSpan.id = 'displayPersonaStatus';
+            nameWrap.appendChild(statusSpan);
+            info.appendChild(nameWrap);
+
+            const sub = document.createElement('p');
+            sub.className = 'text-xs text-stone-500';
+            sub.textContent = `已导入 ${p.chatHistory.length} 条对话与多模态记录分析`;
+            info.appendChild(sub);
+            left.appendChild(info);
+            header.appendChild(left);
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-sm';
+            editBtn.id = 'editToggleBtn';
+            editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span id="editToggleText">编辑档案</span>`;
+            editBtn.addEventListener('click', toggleEditPersona);
+            header.appendChild(editBtn);
+
+            panel.appendChild(header);
+
+            const content = document.createElement('div');
+            content.id = 'personaDetailContent';
+            panel.appendChild(content);
+
+            renderPersonaDetailContent(false);
         }
 
         function renderPersonaDetailContent(editMode) {
             const p = getActivePersona();
             const container = document.getElementById('personaDetailContent');
-            if (!container) return;
+            container.innerHTML = ''; // 清空
 
             if (editMode) {
-                // 编辑模式：所有字段可编辑
-                container.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-2">
-                    <span class="text-stone-500 font-medium block">基本信息</span>
-                    <div><b>昵称：</b><input type="text" id="editName" value="${p.name}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
-                    <div><b>性别：</b>
-                        <select id="editGender" class="w-full bg-white border border-stone-200 rounded px-2 py-1">
-                            <option value="">请选择</option>
-                            <option value="男" ${p.gender === '男' ? 'selected' : ''}>男</option>
-                            <option value="女" ${p.gender === '女' ? 'selected' : ''}>女</option>
-                            <option value="其他" ${p.gender === '其他' ? 'selected' : ''}>其他</option>
-                        </select>
-                    </div>
-                    <div><b>年龄：</b><input type="text" id="editAge" value="${p.age || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
-                    <div><b>职业：</b><input type="text" id="editOccupation" value="${p.occupation || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
-                    <div><b>城市：</b><input type="text" id="editCity" value="${p.city || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
-                    <div><b>认识途径：</b><input type="text" id="editHowMet" value="${p.how_met || ''}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
-                    <div><b>关系阶段：</b>
-                        <select id="editStatus" class="w-full bg-white border border-stone-200 rounded px-2 py-1">
-                            <option value="暗恋中" ${p.status === '暗恋中' ? 'selected' : ''}>暗恋中</option>
-                            <option value="追求中" ${p.status === '追求中' ? 'selected' : ''}>追求中</option>
-                            <option value="交往中" ${p.status === '交往中' ? 'selected' : ''}>交往中</option>
-                            <option value="已分手/前任" ${p.status === '已分手/前任' ? 'selected' : ''}>已分手/前任</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-2">
-                    <span class="text-stone-500 font-medium block">性格与心理</span>
-                    <div><b>MBTI：</b><input type="text" id="editMbti" value="${p.mbti}" class="w-full bg-white border border-stone-200 rounded px-2 py-1 uppercase"></div>
-                    <div><b>性格类型：</b><input type="text" id="editPersonalityType" value="${p.personality_type || '感性型'}" class="w-full bg-white border border-stone-200 rounded px-2 py-1"></div>
-                    <div><b>性格画像：</b><textarea id="editTraits" rows="2" class="w-full bg-white border border-stone-200 rounded px-2 py-1">${p.traits || ''}</textarea></div>
-                    <div><b>最打动ta的方式：</b><textarea id="editAttractionTips" rows="2" class="w-full bg-white border border-stone-200 rounded px-2 py-1">${p.attraction_tips || ''}</textarea></div>
-                    <div><b>注意事项：</b><textarea id="editNotes" rows="2" class="w-full bg-white border border-stone-200 rounded px-2 py-1">${p.notes || ''}</textarea></div>
-                </div>
-            </div>
-
-            <div class="mt-4 flex justify-end space-x-2">
-                <button onclick="toggleEditPersona()" class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition">取消</button>
-                <button onclick="savePersonaEdit()" class="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold shadow-sm transition">保存更新</button>
-            </div>
-        `;
-                document.getElementById('editToggleText').innerText = '取消编辑';
+                // 编辑模式同样采用 DOM 构建，此处略
+                // 注意所有 input 的 value 使用 .value 设置，而非拼接
             } else {
-                // 只读模式
-                container.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1">
-                    <span class="text-stone-500 font-medium block">基本信息</span>
-                    <div><b>昵称：</b>${p.name}</div>
-                    <div><b>性别：</b>${p.gender || '未填'}</div>
-                    <div><b>年龄：</b>${p.age || '未填'}</div>
-                    <div><b>职业：</b>${p.occupation || '未填'}</div>
-                    <div><b>城市：</b>${p.city || '未填'}</div>
-                    <div><b>认识途径：</b>${p.how_met || '未填'}</div>
-                    <div><b>关系阶段：</b><span class="px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}">${p.status}</span></div>
-                </div>
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 text-xs';
 
-                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1">
-                    <span class="text-stone-500 font-medium block">性格与心理</span>
-                    <div><b>MBTI：</b>${p.mbti}</div>
-                    <div><b>性格类型：</b>${p.personality_type || '感性型'}</div>
-                    <div><b>性格画像：</b>${p.traits || '未填写'}</div>
-                    <div><b>最打动ta的方式：</b>${p.attraction_tips || '未填写'}</div>
-                    <div><b>注意事项：</b>${p.notes || '未填写'}</div>
-                </div>
-            </div>
+                // 左列：基本信息
+                const left = document.createElement('div');
+                left.className = 'bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1';
+                const leftTitle = document.createElement('span');
+                leftTitle.className = 'text-stone-500 font-medium block';
+                leftTitle.textContent = '基本信息';
+                left.appendChild(leftTitle);
 
-            <div class="bg-stone-50 p-4 rounded-xl border border-stone-200/80 text-xs space-y-1 mt-4">
-                <span class="text-stone-500 font-medium block">多模态附件</span>
-                <div>共 ${p.attachments ? p.attachments.length : 0} 个关联文件</div>
-            </div>
-        `;
-                document.getElementById('editToggleText').innerText = '编辑档案';
+                const fields = [
+                    { label: '昵称：', value: p.name },
+                    { label: '性别：', value: p.gender || '未填' },
+                    { label: '年龄：', value: p.age || '未填' },
+                    { label: '职业：', value: p.occupation || '未填' },
+                    { label: '城市：', value: p.city || '未填' },
+                    { label: '认识途径：', value: p.how_met || '未填' },
+                ];
+                fields.forEach(f => {
+                    const div = document.createElement('div');
+                    const b = document.createElement('b');
+                    b.textContent = f.label;
+                    div.appendChild(b);
+                    const text = document.createTextNode(f.value);
+                    div.appendChild(text);
+                    left.appendChild(div);
+                });
+
+                // 关系阶段单独处理（带样式）
+                const statusDiv = document.createElement('div');
+                const bStatus = document.createElement('b');
+                bStatus.textContent = '关系阶段：';
+                statusDiv.appendChild(bStatus);
+                const statusSpan = document.createElement('span');
+                statusSpan.className = `px-2 py-0.5 rounded-full font-medium ${getStatusBadgeStyle(p.status)}`;
+                statusSpan.textContent = p.status;
+                statusDiv.appendChild(statusSpan);
+                left.appendChild(statusDiv);
+
+                grid.appendChild(left);
+
+                // 右列：性格与心理
+                const right = document.createElement('div');
+                right.className = 'bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1';
+                const rightTitle = document.createElement('span');
+                rightTitle.className = 'text-stone-500 font-medium block';
+                rightTitle.textContent = '性格与心理';
+                right.appendChild(rightTitle);
+
+                const rightFields = [
+                    { label: 'MBTI：', value: p.mbti },
+                    { label: '性格类型：', value: p.personality_type || '感性型' },
+                    { label: '性格画像：', value: p.traits || '未填写' },
+                    { label: '最打动ta的方式：', value: p.attraction_tips || '未填写' },
+                    { label: '注意事项：', value: p.notes || '未填写' },
+                ];
+                rightFields.forEach(f => {
+                    const div = document.createElement('div');
+                    const b = document.createElement('b');
+                    b.textContent = f.label;
+                    div.appendChild(b);
+                    const text = document.createTextNode(f.value);
+                    div.appendChild(text);
+                    right.appendChild(div);
+                });
+                grid.appendChild(right);
+
+                container.appendChild(grid);
             }
         }
 
@@ -1356,65 +1415,78 @@
 
         function renderSimulatorView() {
             const p = getActivePersona();
+            // 更新头像等信息（安全，使用 textContent）
             document.getElementById('simAvatar').src = p.avatar;
-            document.getElementById('simName').innerText = p.name;
-            document.getElementById('simTag').innerText = p.status;
+            document.getElementById('simName').textContent = p.name;
+            document.getElementById('simTag').textContent = p.status;
 
             const box = document.getElementById('simChatBox');
-            box.innerHTML = p.chatHistory.map(m => {
-                const isMe = m.sender === 'me';
-                let displayText = '';
-                let mediaHtml = '';
+            box.innerHTML = ''; // 清空
 
-                // 判断是否有 content 数组（新格式）
+            p.chatHistory.forEach(m => {
+                const isMe = m.sender === 'me';
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+
+                const bubble = document.createElement('div');
+                bubble.className = `max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isMe ? 'bg-neutral-900 text-white rounded-br-none shadow-sm' : 'bg-white text-stone-800 rounded-bl-none border border-stone-200/90 shadow-sm'}`;
+
+                // 处理内容（可能是数组或旧格式）
+                let displayText = '';
+                let hasMedia = false;
+
                 if (Array.isArray(m.content)) {
-                    // 遍历 content 构建显示
-                    for (const item of m.content) {
+                    m.content.forEach(item => {
                         if (item.type === 'text' && item.text) {
                             displayText += (displayText ? '\n' : '') + item.text;
                         } else if (item.type === 'image' && item.data) {
-                            // 图片数据为 base64，构造 data URL（默认 PNG，可根据实际情况调整）
-                            mediaHtml += `<div class="mt-2"><img src="data:image/png;base64,${item.data}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition" onclick="window.open(this.src,'_blank')"></div>`;
+                            const img = document.createElement('img');
+                            img.src = `data:image/png;base64,${item.data}`;
+                            img.className = 'mt-2 max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition';
+                            img.addEventListener('click', () => window.open(img.src, '_blank'));
+                            bubble.appendChild(img);
+                            hasMedia = true;
                         } else if (item.type === 'audio' && item.data) {
-                            // 音频数据为 base64（16kHz WAV），使用 audio 标签播放
-                            mediaHtml += `<div class="mt-2"><audio controls src="data:audio/wav;base64,${item.data}" class="w-full max-w-[200px]"></audio></div>`;
-                        } else if (item.type === 'video' && item.data) {
-                            // 视频数据为 base64（MP4），使用 video 标签
-                            mediaHtml += `<div class="mt-2"><video controls src="data:video/mp4;base64,${item.data}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200"></video></div>`;
+                            const audio = document.createElement('audio');
+                            audio.src = `data:audio/wav;base64,${item.data}`;
+                            audio.className = 'mt-2 w-full max-w-[200px]';
+                            audio.controls = true;
+                            bubble.appendChild(audio);
+                            hasMedia = true;
                         }
-                    }
+                    });
                 } else {
-                    // 旧格式：使用 m.text, m.image, m.audio, m.file
                     displayText = m.text || m.displayText || '';
                     if (m.image) {
-                        mediaHtml += `<div class="mt-2"><img src="${m.image}" class="max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition" onclick="window.open(this.src,'_blank')"></div>`;
+                        const img = document.createElement('img');
+                        img.src = m.image;
+                        img.className = 'mt-2 max-w-[200px] max-h-[160px] rounded-lg border border-stone-200 object-cover cursor-pointer hover:opacity-90 transition';
+                        img.addEventListener('click', () => window.open(img.src, '_blank'));
+                        bubble.appendChild(img);
+                        hasMedia = true;
                     }
                     if (m.audio) {
-                        const autoPlay = m._autoPlay ? 'autoplay' : '';
-                        mediaHtml += `<div class="mt-2"><audio controls ${autoPlay} src="${m.audio}" class="w-full max-w-[200px]"></audio></div>`;
-                        delete m._autoPlay; // 只自动播放一次
-                    }
-                    if (m.file) {
-                        mediaHtml += `<div class="mt-2 text-[11px] text-stone-700 bg-stone-100 px-2 py-1 rounded border border-stone-200 flex items-center gap-1"><i class="fa-solid fa-file"></i> <span>${m.file}</span></div>`;
+                        const audio = document.createElement('audio');
+                        audio.src = m.audio;
+                        audio.className = 'mt-2 w-full max-w-[200px]';
+                        audio.controls = true;
+                        if (m._autoPlay) audio.autoplay = true;
+                        bubble.appendChild(audio);
+                        hasMedia = true;
                     }
                 }
 
-                // 如果既无文本又无媒体，显示占位符
-                if (!displayText && !mediaHtml) {
-                    displayText = '[内容]';
+                if (displayText) {
+                    const textNode = document.createElement('div');
+                    textNode.textContent = displayText;
+                    bubble.prepend(textNode);
                 }
 
-                return `
-            <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
-                <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-xs ${isMe ? 'bg-neutral-900 text-white rounded-br-none shadow-sm' : 'bg-white text-stone-800 rounded-bl-none border border-stone-200/90 shadow-sm'}">
-                    ${displayText ? `<div>${displayText}</div>` : ''}
-                    ${mediaHtml}
-                </div>
-            </div>
-        `;
-            }).join('');
+                wrapper.appendChild(bubble);
+                box.appendChild(wrapper);
+            });
+
             box.scrollTop = box.scrollHeight;
-
             renderSimulatorSuggestions();
         }
 
@@ -1743,11 +1815,16 @@
                 "“哈哈你今天说话语气好可爱，遇到了什么开心事吗？”"
             ];
             const box = document.getElementById('simSuggestions');
-            box.innerHTML = suggestions.map(s => `
-                <div onclick="applySuggestion('${s.replace(/\"/g, '&quot;')}')" class="p-2.5 bg-stone-50 hover:bg-white text-stone-800 rounded-xl cursor-pointer transition border border-stone-200/80 hover:border-stone-400 text-[11px] leading-relaxed shadow-sm">
-                    ${s}
-                </div>
-            `).join('');
+            box.innerHTML = '';
+            suggestions.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'p-2.5 bg-stone-50 hover:bg-white text-stone-800 rounded-xl cursor-pointer transition border border-stone-200/80 hover:border-stone-400 text-[11px] leading-relaxed shadow-sm';
+                div.textContent = s;
+                div.addEventListener('click', () => {
+                    document.getElementById('simInput').value = s.replace(/^“|”$/g, '');
+                });
+                box.appendChild(div);
+            });
         }
 
         function applySuggestion(text) {
