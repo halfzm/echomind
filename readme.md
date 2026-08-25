@@ -19,6 +19,7 @@ python main.py
 # 参考项目
 - [MiniCPN-v](https://github.com/OpenBMB/MiniCPM-V)
 - [MiniCPM-o-Demo](https://github.com/OpenBMB/MiniCPM-o-Demo)
+- [simp-skill](https://github.com/BeamusWayne/simp-skill/tree/main)
 
 
 ## MiniCPM模型测试

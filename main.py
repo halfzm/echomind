@@ -10,7 +10,7 @@ from dataclasses import asdict
 
 import websockets
 from fastapi import FastAPI, Query
-from fastapi import WebSocket,WebSocketDisconnect,HTTPException
+from fastapi import WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -18,16 +18,17 @@ from echo_mind import EchoMind
 from models import SelfieRequest, TimelineEvent, Persona
 from utils import load_personas_from_file, save_personas_to_file
 
-app = FastAPI()
-skill = EchoMind()
-
-DATA_DIR = Path("./relations")
-DATA_DIR.mkdir(exist_ok=True)
-PERSONAS_FILE = os.path.join(DATA_DIR, "personas.json")
-
 # MiniCPM-o API 地址
 API_HOST = "minicpmo45.modelbest.cn"
 API_WS_URL = f"wss://{API_HOST}/v1/realtime?mode=chat"
+
+DATA_DIR = Path(os.path.abspath("./relations"))
+DATA_DIR.mkdir(exist_ok=True)
+PERSONAS_FILE = os.path.join(DATA_DIR, "personas.json")
+print(DATA_DIR)
+
+app = FastAPI()
+skill = EchoMind(data_dir=DATA_DIR)
 
 # 挂载静态文件目录，URL 前缀为 /static
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -49,20 +50,33 @@ async def get_turnbased():
 
 @app.get("/selfie")
 async def get_selfie():
-    """获取当前用户的档案，若不存在则返回空"""
+    """获取当前用户的档案，若不存在、为空或格式错误则返回默认"""
     if not DATA_DIR.exists():
         return {"status": "not_found", "profile": None}
-    json_files = f"{DATA_DIR}/selfie.json"
-    if not Path(json_files).exists():
+
+    json_path = (
+        DATA_DIR / "selfie.json"
+    )  # 假设 DATA_DIR 是 Path 对象，请根据实际情况调整
+    if not json_path.exists():
         return {"status": "not_found", "profile": None}
-    with open(json_files, "r", encoding="utf-8") as f:
-        data = json.load(f)
+
+    # 检查文件是否为空
+    if json_path.stat().st_size == 0:
+        return {"status": "not_found", "profile": None}
+
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        # 文件内容损坏或格式错误，返回默认
+        return {"status": "not_found", "profile": None}
+
     # 转换为前端期望的格式
     return {
         "status": "success",
         "profile": {
-            "name": data.get("name", "我"),
-            "mbti": data.get("mbti", "未知"),
+            "name": data.get("name", "myself"),
+            "mbti": data.get("mbti", ""),
             "strengths": data.get("strengths", ""),
             "weaknesses": data.get("weaknesses", ""),
         },

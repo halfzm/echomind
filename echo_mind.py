@@ -107,9 +107,11 @@ class EchoMind:
             "weaknesses": cons,
             "created_at": now.strftime("%Y-%m-%d"),
         }
-
-        with open(self.data_dir / "selfie.json", "w", encoding="utf-8") as f:
-            json.dump(asdict(profile), f, ensure_ascii=False, indent=2)
+        try:
+            with open(self.data_dir / "selfie.json", "w", encoding="utf-8") as f:
+                json.dump(profile, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(e)
 
         return profile
 

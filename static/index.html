@@ -165,8 +165,9 @@
                 <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
             </div>
             <div>
-                <h1 class="font-bold text-base leading-none text-stone-900 tracking-tight">灵犀</h1>
-                <span class="text-[10px] text-stone-400 font-medium tracking-wider uppercase">EchoMind</span>
+                <h1 class="font-bold text-base leading-none text-stone-900 tracking-tight">灵犀 | EchoMind</h1>
+                <span class="text-[10px] text-stone-400 font-medium tracking-wider uppercase">AI for Human Connection |
+                    理解还在身边的人，记住已经离开的人</span>
             </div>
         </div>
 
@@ -232,7 +233,7 @@
                     <div class="w-7 h-7 rounded-lg flex items-center justify-center bg-white/10 shrink-0">
                         <i class="fa-solid fa-address-book text-xs"></i>
                     </div>
-                    <span class="hidden lg:inline font-semibold">我的关系人</span>
+                    <span class="hidden lg:inline font-semibold">Persona 人格镜像</span>
                 </button>
 
                 <button onclick="switchTab('simulator')" id="tab-btn-simulator"
@@ -241,7 +242,7 @@
                         class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
                         <i class="fa-solid fa-comments text-xs"></i>
                     </div>
-                    <span class="hidden lg:inline font-semibold">模拟舱</span>
+                    <span class="hidden lg:inline font-semibold">Sandbox 关系沙盒</span>
                 </button>
 
                 <button onclick="switchTab('decision')" id="tab-btn-decision"
@@ -250,7 +251,7 @@
                         class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
                         <i class="fa-solid fa-chart-radar text-xs"></i>
                     </div>
-                    <span class="hidden lg:inline font-semibold">决策台</span>
+                    <span class="hidden lg:inline font-semibold">Insight 关系洞察</span>
                 </button>
 
                 <button onclick="switchTab('timeline')" id="tab-btn-timeline"
@@ -259,7 +260,7 @@
                         class="w-7 h-7 rounded-lg flex items-center justify-center bg-stone-200/60 shrink-0 text-stone-700">
                         <i class="fa-solid fa-timeline text-xs"></i>
                     </div>
-                    <span class="hidden lg:inline font-semibold">时光轴</span>
+                    <span class="hidden lg:inline font-semibold">Memory 记忆空间</span>
                 </button>
             </nav>
 
@@ -286,11 +287,11 @@
                     class="bg-white/90 border border-stone-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
-                            <span>我的关系人</span>
+                            <span>People 重要的人</span>
                             <span class="text-xs bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full font-medium"
                                 id="personaCountBadge">0 位关系对象</span>
                         </h2>
-                        <p class="text-xs text-stone-500 mt-1">管理AI人格对象库，可直接导入微信/QQ聊天记录、通话语音及截图构建人物档案。</p>
+                        <p class="text-xs text-stone-500 mt-1">People Who Matter 记录生命中重要的人</p>
                     </div>
                     <button onclick="openCreatePersonaModal()"
                         class="self-start md:self-auto flex items-center space-x-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold rounded-xl transition shadow-sm shrink-0">
@@ -512,12 +513,12 @@
                     class="bg-white/90 border border-stone-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                     <div>
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
-                            <span>决策台与战术局势</span>
+                            <span>Insight|关系洞察</span>
                             <span
                                 class="text-xs bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full border border-stone-300 font-medium"
                                 id="decisionPersonaName">分析对象：林小A</span>
                         </h2>
-                        <p class="text-xs text-stone-500 mt-1">支持粘贴文本、批量上传聊天截图、导入语音文件及完整聊天记录文件（TXT/JSON/CSV）。</p>
+                        <p class="text-xs text-stone-500 mt-1">关系场景推演，分析聊天记录潜在意图并生成对应策略</p>
                     </div>
 
                     <button onclick="triggerEmergencyKit()"
@@ -669,12 +670,12 @@
                     class="bg-white/90 border border-stone-200 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                     <div>
                         <h2 class="text-xl font-bold text-stone-900 flex items-center gap-2">
-                            <span>时光轴与关系沉淀</span>
+                            <span>Memory|记忆空间</span>
                             <span
                                 class="text-xs bg-stone-200 text-stone-800 border border-stone-300 px-2.5 py-0.5 rounded-full font-medium"
                                 id="timelinePersonaName">关于：林小A</span>
                         </h2>
-                        <p class="text-xs text-stone-500 mt-1">记录你们的重要里程碑、高光时刻、每日复盘与情感结案。</p>
+                        <p class="text-xs text-stone-500 mt-1">记录你们的重要里程碑、高光时刻、每日复盘与情感结案</p>
                     </div>
 
                     <div class="flex items-center gap-2 shrink-0">
@@ -1335,16 +1336,80 @@
         function renderPersonaDetailContent(editMode) {
             const p = getActivePersona();
             const container = document.getElementById('personaDetailContent');
-            container.innerHTML = ''; // 清空
+            container.innerHTML = '';
 
             if (editMode) {
-                // 编辑模式同样采用 DOM 构建，此处略
-                // 注意所有 input 的 value 使用 .value 设置，而非拼接
+                // 编辑模式：生成表单
+                const form = document.createElement('div');
+                form.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 text-xs';
+
+                const fields = [
+                    { label: '昵称', id: 'editName', type: 'text', value: p.name },
+                    { label: '性别', id: 'editGender', type: 'select', options: ['', '男', '女', '其他'], value: p.gender || '' },
+                    { label: '年龄', id: 'editAge', type: 'text', value: p.age || '' },
+                    { label: '职业', id: 'editOccupation', type: 'text', value: p.occupation || '' },
+                    { label: '城市', id: 'editCity', type: 'text', value: p.city || '' },
+                    { label: '认识途径', id: 'editHowMet', type: 'text', value: p.how_met || '' },
+                    { label: 'MBTI', id: 'editMbti', type: 'text', value: p.mbti || '' },
+                    { label: '性格类型', id: 'editPersonalityType', type: 'text', value: p.personality_type || '感性型' },
+                    { label: '关系阶段', id: 'editStatus', type: 'select', options: ['暗恋中', '追求中', '交往中', '已分手/前任', '已故亲人'], value: p.status },
+                    { label: '性格画像', id: 'editTraits', type: 'textarea', value: p.traits || '' },
+                    { label: '最打动ta的方式', id: 'editAttractionTips', type: 'textarea', value: p.attraction_tips || '' },
+                    { label: '注意事项', id: 'editNotes', type: 'textarea', value: p.notes || '' },
+                ];
+
+                fields.forEach(f => {
+                    const div = document.createElement('div');
+                    div.className = 'space-y-1';
+                    const label = document.createElement('label');
+                    label.className = 'block text-stone-600 font-medium';
+                    label.textContent = f.label;
+                    div.appendChild(label);
+
+                    let input;
+                    if (f.type === 'select') {
+                        input = document.createElement('select');
+                        f.options.forEach(opt => {
+                            const option = document.createElement('option');
+                            option.value = opt;
+                            option.textContent = opt || '请选择';
+                            if (opt === f.value) option.selected = true;
+                            input.appendChild(option);
+                        });
+                        input.className = 'w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800';
+                    } else if (f.type === 'textarea') {
+                        input = document.createElement('textarea');
+                        input.rows = 2;
+                        input.value = f.value;
+                        input.className = 'w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800 resize-none';
+                    } else {
+                        input = document.createElement('input');
+                        input.type = f.type;
+                        input.value = f.value;
+                        input.className = 'w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:bg-white focus:border-neutral-800';
+                    }
+                    input.id = f.id;
+                    div.appendChild(input);
+                    form.appendChild(div);
+                });
+
+                container.appendChild(form);
+                // 保存按钮置于下方
+                const saveBtnDiv = document.createElement('div');
+                saveBtnDiv.className = 'col-span-2 flex justify-end mt-4';
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-semibold shadow-sm transition active:scale-95';
+                saveBtn.textContent = '保存修改';
+                saveBtn.onclick = async () => {
+                    await savePersonaEdit();
+                };
+                saveBtnDiv.appendChild(saveBtn);
+                container.appendChild(saveBtnDiv);
             } else {
+                // 原有显示逻辑（不变）
                 const grid = document.createElement('div');
                 grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 text-xs';
 
-                // 左列：基本信息
                 const left = document.createElement('div');
                 left.className = 'bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1';
                 const leftTitle = document.createElement('span');
@@ -1352,7 +1417,7 @@
                 leftTitle.textContent = '基本信息';
                 left.appendChild(leftTitle);
 
-                const fields = [
+                const infoFields = [
                     { label: '昵称：', value: p.name },
                     { label: '性别：', value: p.gender || '未填' },
                     { label: '年龄：', value: p.age || '未填' },
@@ -1360,7 +1425,7 @@
                     { label: '城市：', value: p.city || '未填' },
                     { label: '认识途径：', value: p.how_met || '未填' },
                 ];
-                fields.forEach(f => {
+                infoFields.forEach(f => {
                     const div = document.createElement('div');
                     const b = document.createElement('b');
                     b.textContent = f.label;
@@ -1370,7 +1435,6 @@
                     left.appendChild(div);
                 });
 
-                // 关系阶段单独处理（带样式）
                 const statusDiv = document.createElement('div');
                 const bStatus = document.createElement('b');
                 bStatus.textContent = '关系阶段：';
@@ -1380,10 +1444,8 @@
                 statusSpan.textContent = p.status;
                 statusDiv.appendChild(statusSpan);
                 left.appendChild(statusDiv);
-
                 grid.appendChild(left);
 
-                // 右列：性格与心理
                 const right = document.createElement('div');
                 right.className = 'bg-stone-50 p-4 rounded-xl border border-stone-200/80 space-y-1';
                 const rightTitle = document.createElement('span');
@@ -1408,7 +1470,6 @@
                     right.appendChild(div);
                 });
                 grid.appendChild(right);
-
                 container.appendChild(grid);
             }
         }
@@ -2123,9 +2184,10 @@
         }
         async function buildAnalyzeRequestMessages(persona, text, uploads) {
             const messages = [];
+            const userProfile = state.userProfile;
 
             const systemPrompt = `你是一位资深情感关系分析师、微表情与语音语调解读专家，精通进化心理学、依恋理论和行为经济学。
-                用户正在分析他与"${persona.name}"的关系进展（当前阶段：${persona.status}，MBTI：${persona.mbti}）。
+                用户"${userProfile.name}"(MBTI:${userProfile.mbti}, 优点：${userProfile.strengths} 缺点：${userProfile.weaknesses})正在分析他与"${persona.name}"的关系进展（当前阶段：${persona.status}，MBTI：${persona.mbti}）。
                 用户上传了多模态聊天记录（可能包含文本、聊天截图、语音消息等）。
                 对于聊天截图，右边的消息是用户自己发送的。
 
@@ -3181,11 +3243,22 @@
         let isEditing = false;
 
         function toggleEditPersona() {
-            isEditing = !isEditing;
-            renderPersonaDetailContent(isEditing);
+            const textSpan = document.getElementById('editToggleText');
+            if (isEditing) {
+                // 当前为编辑状态，点击触发保存
+                savePersonaEdit().catch(err => alert('保存失败: ' + err.message));
+            } else {
+                // 进入编辑模式
+                isEditing = true;
+                renderPersonaDetailContent(true);
+                if (textSpan) textSpan.textContent = '保存修改';
+            }
         }
 
         async function savePersonaEdit() {
+            // 如果不在编辑模式，直接返回
+            if (!isEditing) return;
+
             const p = getActivePersona();
             const updatedData = {
                 name: document.getElementById('editName').value.trim(),
@@ -3220,16 +3293,10 @@
                 if (index !== -1) {
                     state.personas[index] = { ...state.personas[index], ...result.persona };
                 }
-                // 退出编辑模式并刷新显示
+                // 重置编辑状态并刷新视图
                 isEditing = false;
-                renderActivePersonaDetails();
-                // 刷新其他视图
-                renderHeaderSelect();
-                renderPersonasView();
-                if (state.activeTab === 'simulator') renderSimulatorView();
-                if (state.activeTab === 'decision') renderDecisionView();
-                if (state.activeTab === 'timeline') renderTimelineView();
-                // 提示
+                renderActivePersonaDetails(); // 会重新渲染详情并重置按钮文本
+                // 提示成功
                 const toast = document.createElement('div');
                 toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-xs px-4 py-2 rounded-xl shadow-lg z-50';
                 toast.innerText = '✅ 档案已更新';
