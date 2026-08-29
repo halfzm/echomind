@@ -1539,7 +1539,7 @@
                         audio.src = m.audio;
                         audio.className = 'mt-2 w-full max-w-[200px]';
                         audio.controls = true;
-                        if (m._autoPlay) audio.autoplay = true;
+                        // 移除 if (m._autoPlay) audio.autoplay = true;
                         bubble.appendChild(audio);
                         hasMedia = true;
                     }
@@ -1825,8 +1825,11 @@
                     p.chatHistory[placeholderIndex].text = fullReply || '(空回复)';
                     if (state.simTtsEnabled && state.simAudioChunks.length > 0) {
                         const mergedAudio = mergeAudioChunks(state.simAudioChunks);
-                        p.chatHistory[placeholderIndex].audio = 'data:audio/wav;base64,' + mergedAudio;
-                        p.chatHistory[placeholderIndex]._autoPlay = true;
+                        const audioDataUrl = 'data:audio/wav;base64,' + mergedAudio;
+                        p.chatHistory[placeholderIndex].audio = audioDataUrl;
+                        // 立即播放当前生成的语音，不会触发历史消息的自动播放
+                        playSimAudio(mergedAudio, 24000);
+                        // 不再设置 _autoPlay，避免后续重绘时再次自动播放
                     }
                 }
                 state.simAudioChunks = [];      // 无论成败都清空，防止污染下一条
