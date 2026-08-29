@@ -1515,9 +1515,9 @@
                             img.addEventListener('click', () => window.open(img.src, '_blank'));
                             bubble.appendChild(img);
                             hasMedia = true;
-                        } else if (item.type === 'audio' && item.data) {
+                        } else if (item.type === 'audio' && (item.url || item.data)) {
                             const audio = document.createElement('audio');
-                            audio.src = `data:audio/wav;base64,${item.data}`;
+                            audio.src = item.url || `data:audio/wav;base64,${item.data}`;
                             audio.className = 'mt-2 w-full max-w-[200px]';
                             audio.controls = true;
                             bubble.appendChild(audio);
@@ -1628,7 +1628,7 @@
                     if (source) {
                         try {
                             const base64 = await convertToWav16k(source);
-                            items.push({ type: 'audio', data: base64, name: att.name || 'audio', duration: 0 });
+                            items.push({ type: 'audio', data: base64, url: att.url, name: att.name || 'audio', duration: 0 });
                         } catch (e) {
                             console.warn('Audio conversion failed:', e);
                             continue;
