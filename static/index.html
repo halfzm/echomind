@@ -1516,10 +1516,18 @@
                             bubble.appendChild(img);
                             hasMedia = true;
                         } else if (item.type === 'audio' && (item.url || item.data)) {
+                            // 纯语音气泡没有文字撑开宽度，w-full 的百分比宽度会让气泡塌陷成细条，必须用固定宽度
                             const audio = document.createElement('audio');
                             audio.src = item.url || `data:audio/wav;base64,${item.data}`;
-                            audio.className = 'mt-2 w-full max-w-[200px]';
+                            audio.className = 'mt-2 w-[200px] max-w-full';
                             audio.controls = true;
+                            audio.preload = 'metadata';
+                            if (!displayText) {
+                                const label = document.createElement('div');
+                                label.className = 'flex items-center gap-1.5 text-[11px] opacity-80';
+                                label.innerHTML = '<i class="fa-solid fa-microphone"></i><span>语音消息</span>';
+                                bubble.appendChild(label);
+                            }
                             bubble.appendChild(audio);
                             hasMedia = true;
                         }
@@ -1537,8 +1545,9 @@
                     if (m.audio) {
                         const audio = document.createElement('audio');
                         audio.src = m.audio;
-                        audio.className = 'mt-2 w-full max-w-[200px]';
+                        audio.className = 'mt-2 w-[200px] max-w-full';
                         audio.controls = true;
+                        audio.preload = 'metadata';
                         // 移除 if (m._autoPlay) audio.autoplay = true;
                         bubble.appendChild(audio);
                         hasMedia = true;
